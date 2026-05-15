@@ -17,10 +17,10 @@ class SDPMetadataClient {
 
     // Check if we should use mock API
     const baseURL = process.env.SDP_USE_MOCK_API === 'true'
-      ? `${process.env.SDP_BASE_URL || 'http://localhost:3457'}/app/${this.instanceName}/api/v3`
+      ? `${process.env.SDP_BASE_URL || 'http://localhost:3457'}/api/v3`
       : this.customDomain
-        ? `${this.customDomain}/app/${this.instanceName}/api/v3`
-        : `https://sdpondemand.manageengine.com/app/${this.instanceName}/api/v3`;
+        ? `${this.customDomain}/api/v3`
+        : `https://sdpondemand.manageengine.com/api/v3`;
     
     this.client = axios.create({
       baseURL,

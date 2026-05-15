@@ -34,10 +34,10 @@ class SDPAPIClientV2 {
     // Check if we should use mock API for testing
     const useMock = process.env.SDP_USE_MOCK === 'true' || process.env.SDP_USE_MOCK_API === 'true';
     const baseURL = useMock
-      ? `${process.env.SDP_BASE_URL || 'http://localhost:3457'}/app/${this.instanceName}/api/v3`
+      ? `${process.env.SDP_BASE_URL || 'http://localhost:3457'}/api/v3`
       : this.customDomain
-        ? `${this.customDomain}/app/${this.instanceName}/api/v3`
-        : `https://sdpondemand.manageengine.com/app/${this.instanceName}/api/v3`;
+        ? `${this.customDomain}/api/v3`
+        : `https://sdpondemand.manageengine.com/api/v3`;
     
     console.error(`SDP API baseURL: ${baseURL}`);
     if (useMock) {
@@ -991,7 +991,7 @@ class SDPAPIClientV2 {
    */
   async testConnection() {
     const instance = this.instanceName || '(not set)';
-    const baseUrl = this.customDomain || `https://sdpondemand.manageengine.com/app/${this.instanceName}`;
+    const baseUrl = this.customDomain || 'https://sdpondemand.manageengine.com';
     const dataCenter = this.dataCenter || 'US';
 
     try {
