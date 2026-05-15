@@ -360,12 +360,13 @@ const toolImplementations = {
   
   async close_request(params) {
     try {
-      const { request_id, closure_comments, closure_code } = params;
+      const { request_id, closure_comments, closure_code, resolution } = params;
       if (!request_id) throw new Error('request_id is required');
       console.error(`Closing request ${request_id}`);
       const request = await sdpClient.closeRequest(request_id, {
         closure_comments: closure_comments || 'Request resolved',
-        closure_code: closure_code || 'Resolved'
+        closure_code: closure_code || 'Resolved',
+        resolution
       });
       return {
         content: [{
@@ -1000,7 +1001,7 @@ const tools = [
   },
   {
     name: 'close_request',
-    description: 'Close a request using the dedicated close endpoint (POST /requests/{id}/close). Use closure_resolution to set the resolution text separately.',
+    description: 'Close a request using the dedicated close endpoint. Optionally include resolution text — this is the ONLY way to set resolution on a request that is being closed, since closed requests cannot be updated afterwards.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -1017,6 +1018,10 @@ const tools = [
           description: 'Closure code',
           enum: ['Resolved', 'Cancelled', 'Duplicate', 'Closed', 'On Hold', 'Open'],
           default: 'Resolved'
+        },
+        resolution: {
+          type: 'string',
+          description: 'Full resolution text (no character limit). Include this here rather than calling closure_resolution separately, as resolution cannot be set after a request is closed.'
         }
       },
       required: ['request_id']
@@ -1024,7 +1029,7 @@ const tools = [
   },
   {
     name: 'closure_resolution',
-    description: 'Set the resolution text on a request. Can be called before or after closing.',
+    description: 'Set the resolution text on a request that is still OPEN. WARNING: this will fail with a 403 error if the request is already closed. If closing a request, use the resolution parameter on close_request instead.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -1491,5 +1496,24 @@ app.listen(PORT, '0.0.0.0', () => {
   
   if (!sdpClient) {
     console.error('\n⚠️  SDP client not initialized. Please configure OAuth credentials.');
+    return;
   }
+
+  // Test SDP API connectivity and log tenant info
+  sdpClient.testConnection().then(result => {
+    if (result.success) {
+      console.error('\n✅ SDP API connection successful');
+      console.error(`   Instance : ${result.instance}`);
+      console.error(`   URL      : ${result.baseUrl}`);
+      console.error(`   Region   : ${result.dataCenter}`);
+    } else {
+      console.error('\n❌ SDP API connection failed');
+      console.error(`   Instance : ${result.instance}`);
+      console.error(`   URL      : ${result.baseUrl}`);
+      console.error(`   Error    : ${result.error}`);
+      console.error('   Check SDP_BASE_URL, SDP_CLIENT_ID, SDP_CLIENT_SECRET, SDP_REFRESH_TOKEN');
+    }
+  }).catch(err => {
+    console.error('\n❌ SDP API connection test threw an unexpected error:', err.message);
+  });
 });

@@ -928,7 +928,7 @@ class SDPAPIClientV2 {
    * @returns {Promise<Object>} The closed request object
    */
   async closeRequest(requestId, closeData) {
-    const { closure_comments, closure_code } = closeData;
+    const { closure_comments, closure_code, resolution } = closeData;
 
     // SDP API enforces a 250-character limit on closure_comments
     const MAX_CLOSURE_COMMENTS = 250;
@@ -943,8 +943,15 @@ class SDPAPIClientV2 {
       closure_info.closure_code = { name: closure_code };
     }
 
+    const requestPayload = { closure_info };
+    if (resolution) {
+      requestPayload.resolution = typeof resolution === 'string'
+        ? { content: resolution }
+        : resolution;
+    }
+
     const params = {
-      input_data: JSON.stringify({ request: { closure_info } })
+      input_data: JSON.stringify({ request: requestPayload })
     };
 
     const response = await this.client.post(`/requests/${requestId}/close`, null, { params });
@@ -954,13 +961,22 @@ class SDPAPIClientV2 {
   async setResolution(requestId, resolutionText) {
     const params = {
       input_data: JSON.stringify({
-        request: {
-          resolution: { content: resolutionText }
-        }
+        request: { resolution: { content: resolutionText } }
       })
     };
-    const response = await this.client.put(`/requests/${requestId}`, null, { params });
-    return response.data.request;
+    try {
+      const response = await this.client.put(`/requests/${requestId}`, null, { params });
+      return response.data.request;
+    } catch (error) {
+      const code = error.response?.data?.response_status?.messages?.[0]?.status_code;
+      if (error.response?.status === 403 || code === 4002) {
+        throw new Error(
+          'Cannot set resolution: the request is likely already closed. ' +
+          'Resolution must be set before closing. Use close_request with the resolution parameter to set both at once.'
+        );
+      }
+      throw error;
+    }
   }
 
   async updateStatus(requestId, statusName) {
@@ -975,6 +991,43 @@ class SDPAPIClientV2 {
     return response.data.request;
   }
   
+  /**
+   * Test connectivity to the SDP API and return tenant/instance info.
+   * Makes a minimal GET /priorities call (1 row) to verify auth and reachability.
+   *
+   * @returns {Promise<Object>} { success, instance, baseUrl, dataCenter, message, error? }
+   */
+  async testConnection() {
+    const instance = this.instanceName || process.env.SDP_INSTANCE_NAME || '(not set)';
+    const baseUrl = this.customDomain || `https://sdpondemand.manageengine.com/app/${this.portalName}`;
+    const dataCenter = this.dataCenter || 'US';
+
+    try {
+      const params = {
+        input_data: JSON.stringify({ list_info: { row_count: 1, start_index: 0 } })
+      };
+      await this.client.get('/priorities', { params });
+      return {
+        success: true,
+        instance,
+        baseUrl,
+        dataCenter,
+        message: `Connected to SDP instance "${instance}" at ${baseUrl}`
+      };
+    } catch (error) {
+      const status = error.response?.status;
+      const apiMessage = error.response?.data?.response_status?.messages?.[0]?.message || error.message;
+      return {
+        success: false,
+        instance,
+        baseUrl,
+        dataCenter,
+        message: `Failed to connect to SDP instance "${instance}" at ${baseUrl}`,
+        error: `HTTP ${status || 'N/A'}: ${apiMessage}`
+      };
+    }
+  }
+
   /**
    * Delete a request permanently
    *
