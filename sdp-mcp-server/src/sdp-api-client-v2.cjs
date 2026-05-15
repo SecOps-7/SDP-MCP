@@ -995,27 +995,23 @@ class SDPAPIClientV2 {
     const dataCenter = this.dataCenter || 'US';
 
     try {
-      const params = {
-        input_data: JSON.stringify({ list_info: { row_count: 1, start_index: 0 } })
-      };
-      await this.client.get('/priorities', { params });
+      const token = await this.oauth.getAccessToken();
+      if (!token) throw new Error('No access token returned');
       return {
         success: true,
         instance,
         baseUrl,
         dataCenter,
-        message: `Connected to SDP instance "${instance}" at ${baseUrl}`
+        message: `OAuth token obtained successfully for "${instance}" at ${baseUrl}`
       };
     } catch (error) {
-      const status = error.response?.status;
-      const apiMessage = error.response?.data?.response_status?.messages?.[0]?.message || error.message;
       return {
         success: false,
         instance,
         baseUrl,
         dataCenter,
-        message: `Failed to connect to SDP instance "${instance}" at ${baseUrl}`,
-        error: `HTTP ${status || 'N/A'}: ${apiMessage}`
+        message: `Failed to obtain OAuth token for "${instance}" at ${baseUrl}`,
+        error: error.message
       };
     }
   }
