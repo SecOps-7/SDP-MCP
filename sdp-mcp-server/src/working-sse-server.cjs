@@ -356,36 +356,72 @@ const toolImplementations = {
   
   async close_request(params) {
     try {
-      const { request_id, closure_comments, closure_code, resolution } = params;
-
-      if (!request_id) {
-        throw new Error('request_id is required');
-      }
-
+      const { request_id, closure_comments, closure_code } = params;
+      if (!request_id) throw new Error('request_id is required');
       console.error(`Closing request ${request_id}`);
-
-      const closeData = {
+      const request = await sdpClient.closeRequest(request_id, {
         closure_comments: closure_comments || 'Request resolved',
         closure_code: closure_code || 'Resolved'
-      };
-      if (resolution) closeData.resolution = resolution;
-
-      const request = await sdpClient.closeRequest(request_id, closeData);
-      
+      });
       return {
         content: [{
           type: 'text',
           text: JSON.stringify({
             success: true,
-            request_id: request.id,
-            status: request.status?.name,
-            closed_time: request.completed_time?.display_value,
-            message: `Request #${request.id} closed successfully`
+            request_id: request?.id,
+            status: request?.status?.name,
+            closed_time: request?.completed_time?.display_value,
+            message: `Request #${request_id} closed successfully`
           }, null, 2)
         }]
       };
     } catch (error) {
       throw new Error(`Failed to close request: ${error.message}`);
+    }
+  },
+
+  async closure_resolution(params) {
+    try {
+      const { request_id, resolution } = params;
+      if (!request_id) throw new Error('request_id is required');
+      if (!resolution) throw new Error('resolution is required');
+      console.error(`Setting resolution on request ${request_id}`);
+      const request = await sdpClient.setResolution(request_id, resolution);
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            success: true,
+            request_id: request?.id,
+            message: `Resolution set on request #${request_id}`
+          }, null, 2)
+        }]
+      };
+    } catch (error) {
+      throw new Error(`Failed to set resolution: ${error.message}`);
+    }
+  },
+
+  async update_status(params) {
+    try {
+      const { request_id, status } = params;
+      if (!request_id) throw new Error('request_id is required');
+      if (!status) throw new Error('status is required');
+      console.error(`Updating status of request ${request_id} to "${status}"`);
+      const request = await sdpClient.updateStatus(request_id, status);
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            success: true,
+            request_id: request?.id,
+            status: request?.status?.name,
+            message: `Status updated to "${status}" on request #${request_id}`
+          }, null, 2)
+        }]
+      };
+    } catch (error) {
+      throw new Error(`Failed to update status: ${error.message}`);
     }
   },
   
@@ -960,7 +996,7 @@ const tools = [
   },
   {
     name: 'close_request',
-    description: 'Close a request with resolution details',
+    description: 'Close a request using the dedicated close endpoint (POST /requests/{id}/close). Use closure_resolution to set the resolution text separately.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -970,20 +1006,53 @@ const tools = [
         },
         closure_comments: {
           type: 'string',
-          description: 'Resolution/closure comments'
+          description: 'Closure comments (max 250 characters; longer text will be truncated automatically)'
         },
         closure_code: {
           type: 'string',
           description: 'Closure code',
           enum: ['Resolved', 'Cancelled', 'Duplicate', 'Closed', 'On Hold', 'Open'],
           default: 'Resolved'
-        },
-        resolution: {
-          type: 'string',
-          description: 'Resolution text to record on the request'
         }
       },
       required: ['request_id']
+    }
+  },
+  {
+    name: 'closure_resolution',
+    description: 'Set the resolution text on a request. Can be called before or after closing.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        request_id: {
+          type: 'string',
+          description: 'ID of the request'
+        },
+        resolution: {
+          type: 'string',
+          description: 'Resolution text to record on the request (no character limit)'
+        }
+      },
+      required: ['request_id', 'resolution']
+    }
+  },
+  {
+    name: 'update_status',
+    description: 'Update the status of a request without closing it (e.g., set to On Hold, In Progress, Open)',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        request_id: {
+          type: 'string',
+          description: 'ID of the request'
+        },
+        status: {
+          type: 'string',
+          description: 'New status name',
+          enum: ['Open', 'On Hold', 'In Progress', 'Resolved', 'Closed', 'Cancelled']
+        }
+      },
+      required: ['request_id', 'status']
     }
   },
   {

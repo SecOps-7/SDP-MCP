@@ -928,35 +928,49 @@ class SDPAPIClientV2 {
    * @returns {Promise<Object>} The closed request object
    */
   async closeRequest(requestId, closeData) {
-    await this.ensureMetadata();
-    
-    const { closure_comments, closure_code, status = 'Closed', resolution } = closeData;
-    
-    // Try closing with just closure_comments and status change
-    // Skip closure_code as it's causing validation errors
-    const request = {
-      closure_info: {
-        closure_comments: closure_comments || 'Request closed'
-      },
-      // Use the name format for status
-      status: { name: status }
-    };
-    
-    // Add resolution if provided
-    if (resolution) {
-      request.resolution = typeof resolution === 'string'
-        ? { content: resolution }
-        : resolution;
+    const { closure_comments, closure_code } = closeData;
+
+    // SDP API enforces a 250-character limit on closure_comments
+    const MAX_CLOSURE_COMMENTS = 250;
+    let safeClosureComments = closure_comments || 'Request closed';
+    if (safeClosureComments.length > MAX_CLOSURE_COMMENTS) {
+      console.error(`Warning: closure_comments truncated from ${safeClosureComments.length} to ${MAX_CLOSURE_COMMENTS} chars`);
+      safeClosureComments = safeClosureComments.substring(0, MAX_CLOSURE_COMMENTS - 3) + '...';
     }
-    
+
+    const closure_info = { closure_comments: safeClosureComments };
     if (closure_code) {
-      request.closure_info.closure_code = { name: closure_code };
+      closure_info.closure_code = { name: closure_code };
     }
-    
+
     const params = {
-      input_data: JSON.stringify({ request })
+      input_data: JSON.stringify({ request: { closure_info } })
     };
-    
+
+    const response = await this.client.post(`/requests/${requestId}/close`, null, { params });
+    return response.data.request;
+  }
+
+  async setResolution(requestId, resolutionText) {
+    const params = {
+      input_data: JSON.stringify({
+        request: {
+          resolution: { content: resolutionText }
+        }
+      })
+    };
+    const response = await this.client.put(`/requests/${requestId}`, null, { params });
+    return response.data.request;
+  }
+
+  async updateStatus(requestId, statusName) {
+    const params = {
+      input_data: JSON.stringify({
+        request: {
+          status: { name: statusName }
+        }
+      })
+    };
     const response = await this.client.put(`/requests/${requestId}`, null, { params });
     return response.data.request;
   }
