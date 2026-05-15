@@ -15,15 +15,21 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Initialize SDP API client
+// Diagnostic: log env vars at startup so misconfiguration is immediately visible
+console.error('SDP env check:');
+console.error(`  SDP_BASE_URL     = ${process.env.SDP_BASE_URL     || '(not set)'}`);
+console.error(`  SDP_PORTAL_NAME  = ${process.env.SDP_PORTAL_NAME  || '(not set)'}`);
+console.error(`  SDP_CLIENT_ID    = ${process.env.SDP_CLIENT_ID    ? '(set)' : '(not set)'}`);
+console.error(`  SDP_REFRESH_TOKEN= ${process.env.SDP_REFRESH_TOKEN? '(set)' : '(not set)'}`);
+console.error(`  SDP_DATA_CENTER  = ${process.env.SDP_DATA_CENTER  || 'US (default)'}`);
+
+// Initialize SDP API client — match original: let the client read env vars directly
 let sdpClient;
 try {
   sdpClient = new SDPAPIClientV2({
     clientId: process.env.SDP_CLIENT_ID,
     clientSecret: process.env.SDP_CLIENT_SECRET,
-    refreshToken: process.env.SDP_REFRESH_TOKEN,
     portalName: process.env.SDP_PORTAL_NAME,
-    customDomain: process.env.SDP_BASE_URL,
     dataCenter: process.env.SDP_DATA_CENTER || 'US'
   });
   console.error('SDP API client initialized');

@@ -11,15 +11,16 @@ class SDPMetadataClient {
     this.portalName = config.portalName || process.env.SDP_PORTAL_NAME;
     this.dataCenter = config.dataCenter || process.env.SDP_DATA_CENTER || 'US';
     this.customDomain = config.customDomain || process.env.SDP_BASE_URL;
+    this.instanceName = config.instanceName || process.env.SDP_PORTAL_NAME;
 
     this.oauth = SDPOAuthClient.getInstance(config);
 
     // Check if we should use mock API
     const baseURL = process.env.SDP_USE_MOCK_API === 'true'
-      ? `${process.env.SDP_BASE_URL || 'http://localhost:3457'}/app/${this.portalName}/api/v3`
+      ? `${process.env.SDP_BASE_URL || 'http://localhost:3457'}/app/${this.instanceName}/api/v3`
       : this.customDomain
-        ? `${this.customDomain}/app/${this.portalName}/api/v3`
-        : `https://sdpondemand.manageengine.com/app/${this.portalName}/api/v3`;
+        ? `${this.customDomain}/app/${this.instanceName}/api/v3`
+        : `https://sdpondemand.manageengine.com/app/${this.instanceName}/api/v3`;
     
     this.client = axios.create({
       baseURL,
