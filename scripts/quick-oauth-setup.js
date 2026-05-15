@@ -27,8 +27,8 @@ async function main() {
   
   try {
     const oauth = new SDPOAuthClient({
-      clientId: process.env.SDP_CLIENT_ID || '1000.U38EZ7R0KMO9DQZHYGKE83FG4OVUEU',
-      clientSecret: process.env.SDP_CLIENT_SECRET || '5752f7060c587171f81b21d58c5b8d0019587ca999',
+      clientId: process.env.SDP_CLIENT_ID || 'YOUR_CLIENT_ID',
+      clientSecret: process.env.SDP_CLIENT_SECRET || 'YOUR_CLIENT_SECRET',
       dataCenter: process.env.SDP_DATA_CENTER || 'US'
     });
     

@@ -10,9 +10,9 @@ const path = require('path');
 class SDPOAuthClient {
   constructor(config = {}) {
     // Use the refresh token from sdp-mcp-server's .env if available
-    this.clientId = config.clientId || process.env.SDP_CLIENT_ID || '1000.U38EZ7R0KMO9DQZHYGKE83FG4OVUEU';
-    this.clientSecret = config.clientSecret || process.env.SDP_CLIENT_SECRET || '5752f7060c587171f81b21d58c5b8d0019587ca999';
-    this.refreshToken = config.refreshToken || process.env.SDP_REFRESH_TOKEN || '1000.58376be1b900c8dba9c8cb277e07ab31.0766efe7060d6208a7c71b0b9d057936';
+    this.clientId = config.clientId || process.env.SDP_CLIENT_ID || 'YOUR_CLIENT_ID';
+    this.clientSecret = config.clientSecret || process.env.SDP_CLIENT_SECRET || 'YOUR_CLIENT_SECRET';
+    this.refreshToken = config.refreshToken || process.env.SDP_REFRESH_TOKEN || 'YOUR_REFRESH_TOKEN';
     this.dataCenter = config.dataCenter || process.env.SDP_DATA_CENTER || 'US';
     
     // Token storage

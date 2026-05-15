@@ -64,7 +64,7 @@ SDPOnDemand.requests.ALL,SDPOnDemand.problems.ALL,SDPOnDemand.changes.ALL,SDPOnD
 ## OAuth URL
 
 ```
-https://accounts.zoho.com/oauth/v2/auth?client_id=1000.U38EZ7R0KMO9DQZHYGKE83FG4OVUEU&redirect_uri=https://localhost:3000/callback&response_type=code&access_type=offline&prompt=consent&scope=SDPOnDemand.requests.ALL,SDPOnDemand.problems.ALL,SDPOnDemand.changes.ALL,SDPOnDemand.solutions.ALL,SDPOnDemand.assets.READ,SDPOnDemand.setup.READ,SDPOnDemand.users.READ
+https://accounts.zoho.com/oauth/v2/auth?client_id=YOUR_CLIENT_ID&redirect_uri=https://localhost:3000/callback&response_type=code&access_type=offline&prompt=consent&scope=SDPOnDemand.requests.ALL,SDPOnDemand.problems.ALL,SDPOnDemand.changes.ALL,SDPOnDemand.solutions.ALL,SDPOnDemand.assets.READ,SDPOnDemand.setup.READ,SDPOnDemand.users.READ
 ```
 
 ## If This Fails

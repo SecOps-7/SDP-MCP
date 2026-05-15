@@ -89,7 +89,7 @@ When generating the OAuth code:
 
 1. Go to: https://accounts.zoho.com/oauth/v2/auth
 2. Use these parameters:
-   - client_id: 1000.U38EZ7R0KMO9DQZHYGKE83FG4OVUEU
+   - client_id: YOUR_CLIENT_ID
    - redirect_uri: https://localhost:3000/callback
    - response_type: code
    - access_type: offline
@@ -98,7 +98,7 @@ When generating the OAuth code:
 
 3. Example URL for combination #1:
 ```
-https://accounts.zoho.com/oauth/v2/auth?client_id=1000.U38EZ7R0KMO9DQZHYGKE83FG4OVUEU&redirect_uri=https://localhost:3000/callback&response_type=code&access_type=offline&prompt=consent&scope=SDPOnDemand.requests.ALL,SDPOnDemand.setup.READ
+https://accounts.zoho.com/oauth/v2/auth?client_id=YOUR_CLIENT_ID&redirect_uri=https://localhost:3000/callback&response_type=code&access_type=offline&prompt=consent&scope=SDPOnDemand.requests.ALL,SDPOnDemand.setup.READ
 ```
 
 ## Notes
