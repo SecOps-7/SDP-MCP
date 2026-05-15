@@ -655,8 +655,8 @@ The current implementation stores OAuth tokens in environment variables. Databas
 - Port: 5433 (non-standard to avoid conflicts)
 - Database: sdp_mcp
 - User: sdpmcpservice
-- Password: *jDE1Bj%IPXKMe%Z
-- Root user: root / 16vOp$BeC!&9SCqv
+- Password: (set via SDP_DB_PASSWORD environment variable)
+- Root user: (set via SDP_DB_ROOT_PASSWORD environment variable)
 
 ### Environment Variables
 ```bash

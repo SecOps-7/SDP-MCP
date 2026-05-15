@@ -9,13 +9,22 @@ const { SDPMetadataClient } = require('./sdp-api-metadata.cjs');
 const { SDPUsersAPI } = require('./sdp-api-users.cjs');
 const errorLogger = require('./utils/error-logger.cjs');
 
+// Canonical priority name map for this SDP instance.
+// 'z - Medium' is the actual name configured in this tenant — do not change to '2 - Medium'.
+const PRIORITY_NAMES = {
+  'low':    '1 - Low',
+  'medium': 'z - Medium',
+  'high':   '3 - High',
+  'urgent': '4 - Critical'
+};
+
 class SDPAPIClientV2 {
   constructor(config = {}) {
     // Configuration
-    this.portalName = config.portalName || process.env.SDP_PORTAL_NAME || 'kaltentech';
+    this.portalName = config.portalName || process.env.SDP_PORTAL_NAME;
     this.dataCenter = config.dataCenter || process.env.SDP_DATA_CENTER || 'US';
-    this.customDomain = config.customDomain || process.env.SDP_BASE_URL || 'https://helpdesk.pttg.com';
-    this.instanceName = config.instanceName || process.env.SDP_INSTANCE_NAME || 'itdesk';
+    this.customDomain = config.customDomain || process.env.SDP_BASE_URL;
+    this.instanceName = config.instanceName || process.env.SDP_INSTANCE_NAME;
     
     // Initialize clients (use singleton OAuth client)
     this.oauth = SDPOAuthClient.getInstance(config);
@@ -271,7 +280,7 @@ class SDPAPIClientV2 {
       start_index: offset,
       sort_field: sortBy,
       sort_order: sortOrder,
-      get_total_count: true  // Request total count for pagination
+      get_total_count: true
     };
     
     // Add filters - try filter_by for simple filters first
@@ -291,13 +300,7 @@ class SDPAPIClientV2 {
       };
     } else if (priority && !status) {
       // Single priority filter - use filter_by
-      const priorityMap = {
-        'low': '1 - Low',
-        'medium': 'z - Medium',
-        'high': '3 - High',
-        'urgent': '4 - Critical'
-      };
-      const priorityName = priorityMap[priority.toLowerCase()] || priority;
+      const priorityName = PRIORITY_NAMES[priority.toLowerCase()] || priority;
       listInfo.filter_by = {
         name: 'priority.name',
         value: priorityName
@@ -320,13 +323,7 @@ class SDPAPIClientV2 {
         value: statusName
       });
       
-      const priorityMap = {
-        'low': '1 - Low',
-        'medium': 'z - Medium',
-        'high': '3 - High',
-        'urgent': '4 - Critical'
-      };
-      const priorityName = priorityMap[priority.toLowerCase()] || priority;
+      const priorityName = PRIORITY_NAMES[priority.toLowerCase()] || priority;
       searchCriteria.push({
         field: 'priority.name',
         condition: 'is',
@@ -505,21 +502,9 @@ class SDPAPIClientV2 {
       request.resources = resources;
     }
     
-    // SKIP priority on creation - business rules prevent it (error 4002)
-    // Let SDP use its default priority setting
-    // Priority can be updated after creation if needed
-    // if (priority) {
-    //   const priorityMap = {
-    //     'low': '1 - Low',
-    //     'medium': '2 - Normal',
-    //     'high': '3 - High',
-    //     'urgent': '4 - Critical'
-    //   };
-    //   const priorityName = priorityMap[priority.toLowerCase()] || priority;
-    //   request.priority = { name: priorityName };
-    //   console.error(`Using priority name: "${priorityName}"`);
-    // }
-    console.error('Skipping priority on creation due to business rules - will use SDP default');
+    if (priority) {
+      request.priority = { name: PRIORITY_NAMES[priority.toLowerCase()] || priority };
+    }
     
     // Use category ID
     if (category) {
@@ -555,34 +540,14 @@ class SDPAPIClientV2 {
         const mappedSubcategory = subcategoryMap[subcategory.toLowerCase()] || subcategory;
         request.subcategory = { name: mappedSubcategory };
       }
-    } else if (request.category) {
-      // Default subcategory - always add one since it's often required
-      // IMPORTANT: Use validated subcategories that exist in the system
-      const categoryName = request.category.name || '';
-      const categoryId = request.category.id || '0';
-      
-      if (categoryId === '216826000000006689' || categoryName === 'Software') {
-        // Use a known valid subcategory for Software
-        request.subcategory = { name: 'Not in list' };
-        console.error('Using default Software subcategory: Not in list');
-      } else if (categoryId === '216826000000288100' || categoryName === 'Hardware') {
-        // Use a valid subcategory for Hardware
-        request.subcategory = { name: 'Not in list' };
-        console.error('Using default Hardware subcategory: Not in list');
-      } else {
-        // Generic default subcategory - use Not in list as it's commonly available
-        request.subcategory = { name: 'Not in list' };
-        console.error('Using default subcategory: Not in list');
-      }
     }
     
-    // Skip requester field for now to avoid validation issues
-    // The API user will be used as the requester automatically
-    // This prevents error 4001 with invalid email addresses
-    if (requester_email || requester_name || requester) {
-      console.error('Note: Requester field skipped to avoid validation errors - API user will be used as requester');
-    } else {
-      console.error('No requester specified, SDP will use API user as requester');
+    if (requester_email) {
+      request.requester = { email_id: requester_email };
+    } else if (requester_name) {
+      request.requester = { name: requester_name };
+    } else if (requester) {
+      request.requester = typeof requester === 'string' ? { name: requester } : requester;
     }
     
     // Add technician assignment if provided
@@ -724,7 +689,9 @@ class SDPAPIClientV2 {
     }
     
     if (updates.resolution) {
-      request.resolution = updates.resolution;
+      request.resolution = typeof updates.resolution === 'string'
+        ? { content: updates.resolution }
+        : updates.resolution;
     }
     
     if (updates.closure_info) {
@@ -771,14 +738,7 @@ class SDPAPIClientV2 {
     }
     
     if (updates.priority) {
-      // Use priority name format
-      const priorityMap = {
-        'low': '1 - Low',
-        'medium': 'z - Medium',
-        'high': '3 - High',
-        'urgent': '4 - Critical'
-      };
-      const priorityName = priorityMap[updates.priority.toLowerCase()] || updates.priority;
+      const priorityName = PRIORITY_NAMES[updates.priority.toLowerCase()] || updates.priority;
       request.priority = { name: priorityName };
     }
     
@@ -984,12 +944,13 @@ class SDPAPIClientV2 {
     
     // Add resolution if provided
     if (resolution) {
-      request.resolution = resolution;
+      request.resolution = typeof resolution === 'string'
+        ? { content: resolution }
+        : resolution;
     }
     
-    // Add closure_code if provided (may cause validation errors in some instances)
     if (closure_code) {
-      request.closure_info.closure_code = closure_code;
+      request.closure_info.closure_code = { name: closure_code };
     }
     
     const params = {
@@ -1000,6 +961,56 @@ class SDPAPIClientV2 {
     return response.data.request;
   }
   
+  /**
+   * Delete a request permanently
+   *
+   * @param {string} requestId - ID of the request to delete
+   * @returns {Promise<Object>} API response status
+   */
+  async deleteRequest(requestId) {
+    const response = await this.client.delete(`/requests/${requestId}`);
+    return response.data;
+  }
+
+  /**
+   * Add a file attachment to a request
+   *
+   * @param {string} requestId - ID of the request
+   * @param {string} filePath - Absolute path to the file on the server filesystem
+   * @param {string} [fileName] - Display name for the attachment (defaults to basename of filePath)
+   * @returns {Promise<Object>} API response with attachment details
+   */
+  async addAttachment(requestId, filePath, fileName) {
+    const fs = require('fs');
+    const path = require('path');
+
+    if (!fs.existsSync(filePath)) {
+      throw new Error(`File not found: ${filePath}`);
+    }
+
+    const resolvedName = fileName || path.basename(filePath);
+    const boundary = `----SDPBoundary${Date.now()}`;
+    const fileData = fs.readFileSync(filePath);
+
+    const body = Buffer.concat([
+      Buffer.from(
+        `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${resolvedName}"\r\nContent-Type: application/octet-stream\r\n\r\n`
+      ),
+      fileData,
+      Buffer.from(`\r\n--${boundary}--\r\n`),
+    ]);
+
+    const response = await this.client.post(
+      `/requests/${requestId}/attachments`,
+      body,
+      {
+        headers: { 'Content-Type': `multipart/form-data; boundary=${boundary}` },
+        maxBodyLength: Infinity,
+      }
+    );
+    return response.data;
+  }
+
   /**
    * Search requests with proper format
    * 
@@ -1030,7 +1041,7 @@ class SDPAPIClientV2 {
     // Service Desk Plus requires object format for single criteria
     const listInfo = {
       row_count: rowCount,
-      start_index: offset || 1,  // SDP uses 1-based indexing
+      start_index: offset,
       sort_field: sortBy,
       sort_order: sortOrder,
       get_total_count: getTotalCount,

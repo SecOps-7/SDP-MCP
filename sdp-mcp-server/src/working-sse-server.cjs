@@ -107,8 +107,8 @@ const toolImplementations = {
       switch (command) {
         case 'open_project':
           result.message += `1. Open Claude Code
-2. Navigate to: ${project_path || '/Users/kalten/projects/SDP-MCP'}
-3. The MCP server project is at: /Users/kalten/projects/SDP-MCP`;
+2. Navigate to: ${project_path || process.cwd()}
+3. The MCP server project is in the configured working directory`;
           break;
           
         case 'create_file':
@@ -149,9 +149,6 @@ const toolImplementations = {
       
       // Add project context
       result.project_info = {
-        main_project: '/Users/kalten/projects/SDP-MCP',
-        server_file: '/Users/kalten/projects/SDP-MCP/src/mcp-sse-sdp-integrated.js',
-        api_client: '/Users/kalten/projects/SDP-MCP/src/sdp-api-client-v2.js',
         current_directory: process.cwd()
       };
       
@@ -359,18 +356,21 @@ const toolImplementations = {
   
   async close_request(params) {
     try {
-      const { request_id, closure_comments, closure_code } = params;
-      
+      const { request_id, closure_comments, closure_code, resolution } = params;
+
       if (!request_id) {
         throw new Error('request_id is required');
       }
-      
+
       console.error(`Closing request ${request_id}`);
-      
-      const request = await sdpClient.closeRequest(request_id, {
+
+      const closeData = {
         closure_comments: closure_comments || 'Request resolved',
         closure_code: closure_code || 'Resolved'
-      });
+      };
+      if (resolution) closeData.resolution = resolution;
+
+      const request = await sdpClient.closeRequest(request_id, closeData);
       
       return {
         content: [{
@@ -454,6 +454,24 @@ const toolImplementations = {
     }
   },
   
+  async advanced_search_requests(params) {
+    try {
+      const { criteria, limit = 10, page = 1, sort_by = 'created_time', sort_order = 'desc' } = params;
+      if (!criteria || !Array.isArray(criteria) || criteria.length === 0) {
+        throw new Error('criteria array is required and must not be empty');
+      }
+      const result = await sdpClient.advancedSearchRequests(criteria, { limit, page, sortBy: sort_by, sortOrder: sort_order });
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify(result, null, 2)
+        }]
+      };
+    } catch (error) {
+      throw new Error(`Failed to run advanced search: ${error.message}`);
+    }
+  },
+
   async reply_to_requester(params) {
     try {
       const { request_id, reply_message, mark_first_response = false } = params;
@@ -582,60 +600,94 @@ const toolImplementations = {
   },
   
   async list_technicians(params) {
-    // The /users endpoint doesn't exist in Service Desk Plus Cloud API v3
-    // Return empty result to prevent 401 errors and token refresh loops
-    console.error('Warning: Technician listing not available - /users endpoint does not exist in SDP Cloud API');
-    
+    const { limit = 25, offset = 0, search_term } = params;
+    const result = await sdpClient.users.listTechnicians({ limit, offset, searchTerm: search_term });
     return {
       content: [{
         type: 'text',
-        text: JSON.stringify({
-          message: 'Technician listing is not available in Service Desk Plus Cloud API v3',
-          technicians: [],
-          total_count: 0,
-          has_more: false,
-          usage_tip: 'To assign tickets, use known technician IDs or email addresses directly',
-          note: 'The /users endpoint does not exist in the current API. Technician information is embedded in request objects.'
-        }, null, 2)
+        text: JSON.stringify(result, null, 2)
       }]
     };
   },
-  
+
   async get_technician(params) {
-    // The /users endpoint doesn't exist in Service Desk Plus Cloud API v3
-    console.error('Warning: Technician details not available - /users endpoint does not exist in SDP Cloud API');
-    
+    const { technician_id } = params;
+    if (!technician_id) throw new Error('technician_id is required');
+    const technician = await sdpClient.users.getTechnician(technician_id);
     return {
       content: [{
         type: 'text',
-        text: JSON.stringify({
-          message: 'Technician details are not available in Service Desk Plus Cloud API v3',
-          error: 'The /users/{id} endpoint does not exist in the current API',
-          suggestion: 'Technician information is embedded in request objects when retrieved'
-        }, null, 2)
+        text: JSON.stringify(technician, null, 2)
       }]
     };
   },
-  
+
   async find_technician(params) {
-    // The /users endpoint doesn't exist in Service Desk Plus Cloud API v3
-    console.error('Warning: Technician search not available - /users endpoint does not exist in SDP Cloud API');
-    
     const { search_term } = params;
-    const cleanSearchTerm = search_term ? search_term.replace(/^mailto:/i, '') : '';
-    
+    if (!search_term) throw new Error('search_term is required');
+    const cleanSearchTerm = search_term.replace(/^mailto:/i, '');
+    const technician = await sdpClient.users.findTechnician(cleanSearchTerm);
     return {
       content: [{
         type: 'text',
-        text: JSON.stringify({
-          found: false,
-          message: 'Technician search is not available in Service Desk Plus Cloud API v3',
-          search_term: cleanSearchTerm,
-          error: 'The /users endpoint does not exist in the current API',
-          suggestion: 'Use known technician email addresses directly when assigning tickets (e.g., "cmeuth@pttg.com")'
-        }, null, 2)
+        text: JSON.stringify({ found: !!technician, technician: technician || null }, null, 2)
       }]
     };
+  },
+
+  async delete_request(params) {
+    try {
+      const { request_id } = params;
+
+      if (!request_id) {
+        throw new Error('request_id is required');
+      }
+
+      console.error(`Deleting request ${request_id}`);
+
+      await sdpClient.deleteRequest(request_id);
+
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            success: true,
+            request_id,
+            message: `Request #${request_id} permanently deleted`
+          }, null, 2)
+        }]
+      };
+    } catch (error) {
+      throw new Error(`Failed to delete request: ${error.message}`);
+    }
+  },
+
+  async add_attachment(params) {
+    try {
+      const { request_id, file_path, file_name } = params;
+
+      if (!request_id || !file_path) {
+        throw new Error('request_id and file_path are required');
+      }
+
+      console.error(`Attaching file "${file_path}" to request ${request_id}`);
+
+      await sdpClient.addAttachment(request_id, file_path, file_name);
+
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            success: true,
+            request_id,
+            file_name: file_name || require('path').basename(file_path),
+            message: `File attached to request #${request_id}`
+          }, null, 2)
+        }]
+      };
+    } catch (error) {
+      throw new Error(`Failed to add attachment: ${error.message}`);
+    }
   }
 };
 
@@ -655,7 +707,7 @@ const tools = [
         project_path: {
           type: 'string',
           description: 'Path to project or file',
-          default: '/Users/kalten/projects/SDP-MCP'
+          default: process.cwd()
         },
         args: {
           type: 'array',
@@ -733,7 +785,7 @@ const tools = [
       properties: {
         subject: {
           type: 'string',
-          description: 'Subject/title of the request'
+          description: 'Subject/title of the request (max 250 chars)'
         },
         description: {
           type: 'string',
@@ -751,11 +803,15 @@ const tools = [
         },
         subcategory: {
           type: 'string',
-          description: 'Subcategory of the request (often required)'
+          description: 'Subcategory of the request'
         },
         requester_email: {
           type: 'string',
           description: 'Email of the requester'
+        },
+        requester_name: {
+          type: 'string',
+          description: 'Name of the requester (used if email not provided)'
         },
         technician_id: {
           type: 'string',
@@ -763,7 +819,52 @@ const tools = [
         },
         technician_email: {
           type: 'string',
-          description: 'Email of technician to assign (will lookup ID automatically)'
+          description: 'Email of technician to assign'
+        },
+        urgency: {
+          type: 'string',
+          description: 'Urgency level (e.g., "2 - General Concern")'
+        },
+        impact: {
+          type: 'string',
+          description: 'Impact level (e.g., "1 - Affects User")'
+        },
+        level: {
+          type: 'string',
+          description: 'Support level (e.g., "1 - Frontline")'
+        },
+        mode: {
+          type: 'string',
+          description: 'Creation mode (e.g., "Web Form", "Email")'
+        },
+        request_type: {
+          type: 'string',
+          description: 'Type of request (e.g., "Incident", "Service Request")'
+        },
+        group: {
+          type: 'string',
+          description: 'Group name to assign the request to'
+        },
+        site: {
+          type: 'string',
+          description: 'Site name for the request'
+        },
+        template: {
+          type: 'string',
+          description: 'Template name to use'
+        },
+        due_by_time: {
+          type: 'object',
+          description: 'Due date/time as { value: <epoch_ms> }'
+        },
+        impact_details: {
+          type: 'string',
+          description: 'Impact description (max 250 chars)'
+        },
+        email_ids_to_notify: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Additional email addresses to notify'
         }
       },
       required: ['subject']
@@ -790,7 +891,7 @@ const tools = [
         status: {
           type: 'string',
           description: 'New status',
-          enum: ['open', 'pending', 'resolved', 'closed']
+          enum: ['open', 'pending', 'resolved', 'closed', 'in progress', 'on hold']
         },
         priority: {
           type: 'string',
@@ -811,7 +912,47 @@ const tools = [
         },
         technician_email: {
           type: 'string',
-          description: 'Email of technician to assign (will lookup ID)'
+          description: 'Email of technician to assign'
+        },
+        resolution: {
+          type: 'string',
+          description: 'Resolution text to set on the request'
+        },
+        update_reason: {
+          type: 'string',
+          description: 'Reason for this update'
+        },
+        due_by_time: {
+          type: 'object',
+          description: 'New due date/time as { value: <epoch_ms> }'
+        },
+        urgency: {
+          type: 'string',
+          description: 'New urgency level'
+        },
+        impact: {
+          type: 'string',
+          description: 'New impact level'
+        },
+        level: {
+          type: 'string',
+          description: 'New support level'
+        },
+        group: {
+          type: 'string',
+          description: 'New group name'
+        },
+        site: {
+          type: 'string',
+          description: 'New site name'
+        },
+        scheduled_start_time: {
+          type: 'object',
+          description: 'Scheduled start time as { value: <epoch_ms> }'
+        },
+        scheduled_end_time: {
+          type: 'object',
+          description: 'Scheduled end time as { value: <epoch_ms> }'
         }
       },
       required: ['request_id']
@@ -834,8 +975,12 @@ const tools = [
         closure_code: {
           type: 'string',
           description: 'Closure code',
-          enum: ['Resolved', 'Cancelled', 'Duplicate'],
+          enum: ['Resolved', 'Cancelled', 'Duplicate', 'Closed', 'On Hold', 'Open'],
           default: 'Resolved'
+        },
+        resolution: {
+          type: 'string',
+          description: 'Resolution text to record on the request'
         }
       },
       required: ['request_id']
@@ -882,6 +1027,51 @@ const tools = [
         }
       },
       required: ['query']
+    }
+  },
+  {
+    name: 'advanced_search_requests',
+    description: 'Search requests using structured field criteria (e.g., by requester, technician, date range, priority)',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        criteria: {
+          type: 'array',
+          description: 'Array of search criteria objects',
+          items: {
+            type: 'object',
+            properties: {
+              field: { type: 'string', description: 'Field name (e.g., "status.name", "priority.name", "requester.name", "created_time")' },
+              condition: { type: 'string', description: 'Condition (e.g., "is", "is not", "contains", "greater than", "less than")' },
+              value: { description: 'Value to match against' },
+              logical_operator: { type: 'string', enum: ['AND', 'OR'], description: 'Logical join with previous criterion (omit for first)' }
+            },
+            required: ['field', 'condition', 'value']
+          }
+        },
+        limit: {
+          type: 'number',
+          description: 'Maximum results (max 100)',
+          default: 10,
+          maximum: 100
+        },
+        page: {
+          type: 'number',
+          description: 'Page number for pagination (1-based)',
+          default: 1
+        },
+        sort_by: {
+          type: 'string',
+          description: 'Field to sort by (e.g., "created_time", "subject")',
+          default: 'created_time'
+        },
+        sort_order: {
+          type: 'string',
+          enum: ['asc', 'desc'],
+          default: 'desc'
+        }
+      },
+      required: ['criteria']
     }
   },
   {
@@ -1007,6 +1197,42 @@ const tools = [
         }
       },
       required: ['request_id']
+    }
+  },
+  {
+    name: 'delete_request',
+    description: 'Permanently delete a service desk request. This action cannot be undone.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        request_id: {
+          type: 'string',
+          description: 'ID of the request to permanently delete'
+        }
+      },
+      required: ['request_id']
+    }
+  },
+  {
+    name: 'add_attachment',
+    description: 'Attach a file to a service desk request (max 50 attachments per request)',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        request_id: {
+          type: 'string',
+          description: 'ID of the request to attach the file to'
+        },
+        file_path: {
+          type: 'string',
+          description: 'Absolute path to the file on the server filesystem'
+        },
+        file_name: {
+          type: 'string',
+          description: 'Display name for the attachment (defaults to the filename from file_path)'
+        }
+      },
+      required: ['request_id', 'file_path']
     }
   }
 ];
@@ -1171,6 +1397,9 @@ app.listen(PORT, '0.0.0.0', () => {
   console.error('- add_private_note: Add private note (not visible to requester)');
   console.error('- send_first_response: Send first response with email notification');
   console.error('- get_request_conversation: Get full conversation history');
+  console.error('\nRequest Actions:');
+  console.error('- delete_request: Permanently delete a request');
+  console.error('- add_attachment: Attach a file to a request');
   console.error('\nUtilities:');
   console.error('- get_metadata: Get valid field values');
   console.error('- claude_code_command: Claude Code integration');
@@ -1182,7 +1411,7 @@ app.listen(PORT, '0.0.0.0', () => {
       'service-desk-plus': {
         type: 'stdio',
         command: 'npx',
-        args: ['-y', 'mcp-remote', 'http://10.212.0.7:' + PORT + '/sse', '--allow-http']
+        args: ['-y', 'mcp-remote', 'http://' + (process.env.SERVER_HOST || 'localhost') + ':' + PORT + '/sse', '--allow-http']
       }
     }
   }, null, 2));

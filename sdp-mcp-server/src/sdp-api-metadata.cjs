@@ -8,10 +8,10 @@ const { SDPOAuthClient } = require('./sdp-oauth-client.cjs');
 
 class SDPMetadataClient {
   constructor(config = {}) {
-    this.portalName = config.portalName || process.env.SDP_PORTAL_NAME || 'kaltentech';
+    this.portalName = config.portalName || process.env.SDP_PORTAL_NAME;
     this.dataCenter = config.dataCenter || process.env.SDP_DATA_CENTER || 'US';
-    this.customDomain = config.customDomain || process.env.SDP_BASE_URL || 'https://helpdesk.pttg.com';
-    this.instanceName = config.instanceName || process.env.SDP_INSTANCE_NAME || 'itdesk';
+    this.customDomain = config.customDomain || process.env.SDP_BASE_URL;
+    this.instanceName = config.instanceName || process.env.SDP_INSTANCE_NAME;
     
     this.oauth = SDPOAuthClient.getInstance(config);
     
@@ -102,10 +102,8 @@ class SDPMetadataClient {
    */
   async getStatuses() {
     if (this.cache.statuses) return this.cache.statuses;
-    
-    // Since the statuses endpoint returns 404, use hardcoded common statuses
-    // Note: These don't have real IDs - we'll use names instead
-    this.cache.statuses = [
+
+    const FALLBACK_STATUSES = [
       { id: null, name: 'Open' },
       { id: null, name: 'On Hold' },
       { id: null, name: 'In Progress' },
@@ -113,15 +111,28 @@ class SDPMetadataClient {
       { id: null, name: 'Closed' },
       { id: null, name: 'Cancelled' }
     ];
-    
-    // Create mapping - map to names since we don't have IDs
+
+    try {
+      const params = {
+        input_data: JSON.stringify({
+          list_info: { row_count: 100, start_index: 0 }
+        })
+      };
+      const response = await this.client.get('/statuses', { params });
+      const apiStatuses = response.data.statuses || [];
+      this.cache.statuses = apiStatuses.length > 0 ? apiStatuses : FALLBACK_STATUSES;
+    } catch (error) {
+      console.error('Failed to fetch statuses from API, using fallback list:', error.message);
+      this.cache.statuses = FALLBACK_STATUSES;
+    }
+
     const statusMap = {};
     this.cache.statuses.forEach(s => {
-      statusMap[s.name.toLowerCase()] = s.name;  // Map to name, not ID
-      statusMap[s.name.toLowerCase().replace(/\s+/g, '')] = s.name; // Handle no spaces
+      statusMap[s.name.toLowerCase()] = s.name;
+      statusMap[s.name.toLowerCase().replace(/\s+/g, '')] = s.name;
     });
     this.cache.statusMap = statusMap;
-    
+
     return this.cache.statuses;
   }
   
