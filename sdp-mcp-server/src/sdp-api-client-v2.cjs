@@ -39,6 +39,7 @@ class SDPAPIClientV2 {
         ? `${this.customDomain}/app/${this.instanceName}/api/v3`
         : `https://sdpondemand.manageengine.com/app/${this.instanceName}/api/v3`;
     
+    console.error(`SDP API baseURL: ${baseURL}`);
     if (useMock) {
       console.error('🧪 Using MOCK Service Desk Plus API:', baseURL);
     }
@@ -133,17 +134,24 @@ class SDPAPIClientV2 {
             errorMessage.toLowerCase().includes(pattern)
           );
           
+          // Log the actual 401 response body to diagnose auth failures
+          console.error('401 response body:', JSON.stringify(errorData));
+
           if (!shouldSkipRefresh) {
+            // Guard against infinite retry loop — only retry once per request
+            if (error.config._retry) {
+              console.error('Got 401 again after token refresh — token is valid but API still rejects. Check portal name and scopes.');
+              return Promise.reject(error);
+            }
+            error.config._retry = true;
             console.error('Got 401 Unauthorized, attempting token refresh...');
             try {
               await this.oauth.refreshAccessToken();
-              const originalRequest = error.config;
               const token = await this.oauth.getAccessToken();
-              originalRequest.headers['Authorization'] = `Zoho-oauthtoken ${token}`;
-              return this.client(originalRequest);
+              error.config.headers['Authorization'] = `Zoho-oauthtoken ${token}`;
+              return this.client(error.config);
             } catch (refreshError) {
               console.error('Token refresh failed:', refreshError.message);
-              // Don't retry if refresh fails
               return Promise.reject(error);
             }
           } else {
