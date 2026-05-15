@@ -24,7 +24,6 @@ try {
     refreshToken: process.env.SDP_REFRESH_TOKEN,
     portalName: process.env.SDP_PORTAL_NAME,
     customDomain: process.env.SDP_BASE_URL,
-    instanceName: process.env.SDP_INSTANCE_NAME,
     dataCenter: process.env.SDP_DATA_CENTER || 'US'
   });
   console.error('SDP API client initialized');

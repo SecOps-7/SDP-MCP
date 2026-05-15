@@ -24,19 +24,18 @@ class SDPAPIClientV2 {
     this.portalName = config.portalName || process.env.SDP_PORTAL_NAME;
     this.dataCenter = config.dataCenter || process.env.SDP_DATA_CENTER || 'US';
     this.customDomain = config.customDomain || process.env.SDP_BASE_URL;
-    this.instanceName = config.instanceName || process.env.SDP_INSTANCE_NAME;
-    
+
     // Initialize clients (use singleton OAuth client)
     this.oauth = SDPOAuthClient.getInstance(config);
     this.metadata = new SDPMetadataClient(config);
-    
+
     // Create axios instance
     // Check if we should use mock API for testing
     const useMock = process.env.SDP_USE_MOCK === 'true' || process.env.SDP_USE_MOCK_API === 'true';
     const baseURL = useMock
-      ? `${process.env.SDP_BASE_URL || 'http://localhost:3457'}/app/${this.instanceName}/api/v3`
-      : this.customDomain 
-        ? `${this.customDomain}/app/${this.instanceName}/api/v3`
+      ? `${process.env.SDP_BASE_URL || 'http://localhost:3457'}/app/${this.portalName}/api/v3`
+      : this.customDomain
+        ? `${this.customDomain}/app/${this.portalName}/api/v3`
         : `https://sdpondemand.manageengine.com/app/${this.portalName}/api/v3`;
     
     if (useMock) {
@@ -982,7 +981,7 @@ class SDPAPIClientV2 {
    * @returns {Promise<Object>} { success, instance, baseUrl, dataCenter, message, error? }
    */
   async testConnection() {
-    const instance = this.instanceName || process.env.SDP_INSTANCE_NAME || '(not set)';
+    const instance = this.portalName || '(not set)';
     const baseUrl = this.customDomain || `https://sdpondemand.manageengine.com/app/${this.portalName}`;
     const dataCenter = this.dataCenter || 'US';
 
