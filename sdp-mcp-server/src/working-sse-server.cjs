@@ -5,6 +5,8 @@
  * Full implementation with real API calls
  */
 
+require('dotenv').config();
+
 const express = require('express');
 const cors = require('cors');
 const { SDPAPIClientV2 } = require('./sdp-api-client-v2.cjs');
@@ -19,7 +21,9 @@ try {
   sdpClient = new SDPAPIClientV2({
     clientId: process.env.SDP_CLIENT_ID,
     clientSecret: process.env.SDP_CLIENT_SECRET,
+    refreshToken: process.env.SDP_REFRESH_TOKEN,
     portalName: process.env.SDP_PORTAL_NAME,
+    customDomain: process.env.SDP_BASE_URL,
     dataCenter: process.env.SDP_DATA_CENTER || 'US'
   });
   console.error('SDP API client initialized');
