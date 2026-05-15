@@ -976,6 +976,43 @@ class SDPAPIClientV2 {
   }
   
   /**
+   * Test connectivity to the SDP API and return tenant/instance info.
+   * Makes a minimal GET /priorities call (1 row) to verify auth and reachability.
+   *
+   * @returns {Promise<Object>} { success, instance, baseUrl, dataCenter, message, error? }
+   */
+  async testConnection() {
+    const instance = this.instanceName || process.env.SDP_INSTANCE_NAME || '(not set)';
+    const baseUrl = this.customDomain || `https://sdpondemand.manageengine.com/app/${this.portalName}`;
+    const dataCenter = this.dataCenter || 'US';
+
+    try {
+      const params = {
+        input_data: JSON.stringify({ list_info: { row_count: 1, start_index: 0 } })
+      };
+      await this.client.get('/priorities', { params });
+      return {
+        success: true,
+        instance,
+        baseUrl,
+        dataCenter,
+        message: `Connected to SDP instance "${instance}" at ${baseUrl}`
+      };
+    } catch (error) {
+      const status = error.response?.status;
+      const apiMessage = error.response?.data?.response_status?.messages?.[0]?.message || error.message;
+      return {
+        success: false,
+        instance,
+        baseUrl,
+        dataCenter,
+        message: `Failed to connect to SDP instance "${instance}" at ${baseUrl}`,
+        error: `HTTP ${status || 'N/A'}: ${apiMessage}`
+      };
+    }
+  }
+
+  /**
    * Delete a request permanently
    *
    * @param {string} requestId - ID of the request to delete

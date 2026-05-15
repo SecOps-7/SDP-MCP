@@ -1491,5 +1491,23 @@ app.listen(PORT, '0.0.0.0', () => {
   
   if (!sdpClient) {
     console.error('\n⚠️  SDP client not initialized. Please configure OAuth credentials.');
+    return;
   }
+
+  sdpClient.testConnection().then(result => {
+    if (result.success) {
+      console.error('\n✅ SDP API connection successful');
+      console.error(`   Instance : ${result.instance}`);
+      console.error(`   URL      : ${result.baseUrl}`);
+      console.error(`   Region   : ${result.dataCenter}`);
+    } else {
+      console.error('\n❌ SDP API connection failed');
+      console.error(`   Instance : ${result.instance}`);
+      console.error(`   URL      : ${result.baseUrl}`);
+      console.error(`   Error    : ${result.error}`);
+      console.error('   Check SDP_BASE_URL, SDP_CLIENT_ID, SDP_CLIENT_SECRET, SDP_REFRESH_TOKEN');
+    }
+  }).catch(err => {
+    console.error('\n❌ SDP API connection test threw an unexpected error:', err.message);
+  });
 });
