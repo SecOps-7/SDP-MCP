@@ -2,6 +2,20 @@
 
 All notable changes to the SDP MCP Server are documented here.
 
+## [Unreleased] — 2026-05-19 (session 4)
+
+### Bug Fixes
+- **Fixed `advancedSearchRequests` criteria normalisation** (`sdp-api-client-v2.cjs`) — four
+  issues corrected against the SDP v3 API documentation:
+  1. Single-element criteria array now unwrapped to a plain object before sending — the API
+     expects an object for single criteria, not a one-element array.
+  2. `logical_operator` is now stripped from the first criterion in multi-element arrays —
+     the API rejects queries where the first item carries `logical_operator`.
+  3. `page` parameter replaced with `start_index: (page-1) * rowCount` — aligns with
+     `listRequests` and the primary documented pagination parameter.
+  4. `display_id` lookup in `get_request` now passes the value as an integer (`parseInt`) —
+     `display_id` is type `long` in the API; sending a string caused a type mismatch.
+
 ## [Unreleased] — 2026-05-19 (session 3)
 
 ### New Features
