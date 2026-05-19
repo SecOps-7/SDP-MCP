@@ -1132,36 +1132,56 @@ class SDPAPIClientV2 {
    * @returns {Promise<Object>} Search results with requests array and pagination info
    */
   async advancedSearchRequests(criteria, options = {}) {
-    const { 
-      limit = 10, 
-      page = 1, 
-      sortBy = 'created_time', 
+    const {
+      limit = 10,
+      page = 1,
+      sortBy = 'created_time',
       sortOrder = 'desc',
-      getTotalCount = true 
+      getTotalCount = true
     } = options;
-    
-    // Enforce API maximum of 100 rows per request
+
     const rowCount = Math.min(limit, 100);
-    
+
+    // Normalise criteria to match API expectations:
+    // - Single-element array → unwrap to plain object (API expects object for single criteria)
+    // - Multi-element array → strip logical_operator from the first element (first item must
+    //   not have logical_operator; including it causes the API to reject the query)
+    let normalisedCriteria;
+    if (Array.isArray(criteria)) {
+      if (criteria.length === 1) {
+        const { logical_operator, ...rest } = criteria[0];
+        normalisedCriteria = rest;
+      } else {
+        normalisedCriteria = criteria.map((c, i) => {
+          if (i === 0) {
+            const { logical_operator, ...rest } = c;
+            return rest;
+          }
+          return c;
+        });
+      }
+    } else {
+      normalisedCriteria = criteria;
+    }
+
     const listInfo = {
       row_count: rowCount,
-      page: page,  // Use page instead of start_index for easier pagination
+      start_index: (page - 1) * rowCount,
       sort_field: sortBy,
       sort_order: sortOrder,
       get_total_count: getTotalCount,
-      search_criteria: criteria
+      search_criteria: normalisedCriteria
     };
-    
+
     const params = {
       input_data: JSON.stringify({ list_info: listInfo })
     };
-    
+
     const response = await this.client.get('/requests', { params });
     return {
       requests: response.data.requests || [],
       total_count: response.data.list_info?.total_count || 0,
       has_more: response.data.list_info?.has_more_rows || false,
-      page: response.data.list_info?.page || page,
       start_index: response.data.list_info?.start_index
     };
   }
