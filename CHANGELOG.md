@@ -2,6 +2,15 @@
 
 All notable changes to the SDP MCP Server are documented here.
 
+## [Unreleased] — 2026-05-19 (session 3)
+
+### New Features
+- **`get_request` accepts display_id** (`src/tools/requests.cjs`) — the tool now resolves
+  short human-readable ticket numbers (e.g. `31230`) to the internal 17-digit ID
+  automatically via `advanced_search_requests` before fetching full details. IDs of 10
+  digits or fewer are treated as display_ids; longer IDs are passed directly as before.
+  The schema description is updated to document both formats.
+
 ## [Unreleased] — 2026-05-19 (session 2)
 
 ### Refactoring
