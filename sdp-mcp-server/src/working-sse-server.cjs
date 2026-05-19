@@ -82,6 +82,185 @@ app.get('/sse', (req, res) => {
   });
 });
 
+// MCP Resources — sourced from SDP-MCP_Usage.md
+const SDP_RESOURCES = {
+  'sdp://usage/api-rules': {
+    uri: 'sdp://usage/api-rules',
+    name: 'Critical API Rules',
+    description: 'Mandatory rules that apply to every SDP tool call — field object formats, character limits, and constraints',
+    mimeType: 'text/plain',
+    text: `CRITICAL API RULES — apply to every tool call without exception
+
+- All reference fields must be objects, never plain strings.
+  Correct: { "name": "Hardware" }  Wrong: "Hardware"
+- Resolution field format: { "content": "your text here" }
+- Closure code format: { "name": "Resolved" } (not a plain string)
+- Authorization header: Zoho-oauthtoken <token> — NOT Bearer
+- input_data is sent as a URL query parameter on all methods
+- start_index is 0-based for pagination
+- row_count maximum is 100 per request
+- Subject field: 250 character maximum
+- impact_details field: 250 character maximum
+- You cannot update a closed ticket — always check status first with get_request`
+  },
+
+  'sdp://usage/field-formats': {
+    uri: 'sdp://usage/field-formats',
+    name: 'Field Format Reference',
+    description: 'Correct object format for every SDP field, including priority name map and closure codes',
+    mimeType: 'text/plain',
+    text: `FIELD FORMAT REFERENCE
+
+Field        | Correct format
+-------------|------------------------------------------------
+Category     | { "name": "Software / Platform" }
+Subcategory  | { "name": "MS Office" }
+Site         | { "name": "Berlin" }
+Technician   | { "email_id": "jthomas@example.com" }
+Status       | { "name": "In Progress" }
+Priority     | { "name": "z - Medium" }
+Closure code | { "name": "Resolved" }
+Resolution   | { "content": "Issue resolved by resetting the user's password." }
+
+PRIORITY NAME MAP
+Low      → "1 - Low"
+Medium   → "z - Medium"
+High     → "3 - High"
+Critical → "4 - Critical"
+
+AVAILABLE CLOSURE CODES: Resolved, Cancelled, Duplicate, Closed, On Hold, Open`
+  },
+
+  'sdp://usage/tool-reference': {
+    uri: 'sdp://usage/tool-reference',
+    name: 'Tool Reference',
+    description: 'All SDP tools with purpose, when-to-use guidance, and required fields',
+    mimeType: 'text/plain',
+    text: `SDP TOOL REFERENCE
+
+get_request — Retrieve full details of a single request by ID.
+  Required: request_id
+  Use: Before any action sequence. Never assume a request is open.
+
+list_requests — List requests with optional filters and pagination.
+  Params: status, technician_email, row_count (max 100), start_index, sort_by, sort_order
+
+search_requests — Search requests using simple criteria.
+  Params: search_fields (object), row_count, start_index
+
+advanced_search_requests — Complex multi-field search with AND/OR logic.
+  Params: criteria array of { field, condition, value, logical_operator }
+
+create_request — Create a new service desk request.
+  Required: subject (max 250 chars)
+  Optional: description, requester_email, category, subcategory, site, technician, priority
+
+update_request — Update fields on an existing open request.
+  Required: request_id
+  Updatable: category, subcategory, site, technician, status, priority, group, urgency, impact, level
+
+close_request — Close a request with resolution and closure code.
+  Required: request_id, resolution { "content": "..." }, closure_code { "name": "Resolved" }
+  Note: Handles both resolution and closure in one call. Do not call update_request first.
+
+delete_request — Permanently delete a request. Irreversible. Explicit instruction only.
+  Required: request_id
+
+reply_to_requester — Send email reply visible in the ticket conversation thread.
+  Required: request_id, reply_content
+  Note: ALWAYS use this to email the requester — not add_note.
+
+send_first_response — First formal response for SLA first-response tracking.
+  Required: request_id, response_content
+  Note: Only for the very first response. Use reply_to_requester for all subsequent replies.
+
+add_note — Add a public note visible to the requester (no email sent).
+  Required: request_id, note_content
+
+add_private_note — Add an internal note NOT visible to the requester.
+  Required: request_id, note_content
+
+get_request_conversation — Retrieve full conversation history.
+  Required: request_id
+
+list_technicians — List all available technicians.
+
+get_technician — Get detailed technician information by ID.
+  Required: technician_id
+
+find_technician — Look up a technician by name or email.
+  Required: name or email
+
+get_metadata — Retrieve valid dropdown values for SDP fields.
+  Use: Before create/update if unsure whether a field value is valid.
+
+add_attachment — Attach a file to an existing request.
+  Required: request_id, file_path
+
+get_usage_guide — Retrieve a specific section of the SDP usage guide as context.
+  Params: section (api-rules | tool-reference | field-formats | error-codes | action-sequences | decision-matrix)`
+  },
+
+  'sdp://usage/error-codes': {
+    uri: 'sdp://usage/error-codes',
+    name: 'Error Code Reference',
+    description: 'SDP API error codes and recommended actions',
+    mimeType: 'text/plain',
+    text: `ERROR CODE REFERENCE
+
+Code             | Meaning                               | Action
+-----------------|---------------------------------------|----------------------------------
+401/UNAUTHORISED | OAuth token invalid or expired        | Token refresh handled automatically
+403              | Permission denied (e.g. priority)     | API limitation — skip the field
+400/4012         | Mandatory field missing               | Check required fields for the operation
+4000             | General failure                       | Read the error_messages array for detail
+4002             | Unauthorised                          | Verify portal name, instance name, and domain`
+  },
+
+  'sdp://usage/action-sequences': {
+    uri: 'sdp://usage/action-sequences',
+    name: 'Common Action Sequences',
+    description: 'Standard tool call sequences for typical ITSM workflows',
+    mimeType: 'text/plain',
+    text: `COMMON ACTION SEQUENCES
+
+Standard Solution:
+  get_request → update_request → reply_to_requester → close_request
+
+Follow-Up Question:
+  get_request → update_request → reply_to_requester
+
+Escalation:
+  get_request → update_request (reassign technician) → add_private_note → reply_to_requester`
+  },
+
+  'sdp://usage/decision-matrix': {
+    uri: 'sdp://usage/decision-matrix',
+    name: 'Tool Decision Matrix',
+    description: 'Which tool to use for each ITSM task, including out-of-scope tools to avoid',
+    mimeType: 'text/plain',
+    text: `TOOL DECISION MATRIX
+
+Task                                              | Tool
+--------------------------------------------------|---------------------------
+Check if a request exists / get current state     | get_request
+Update category, subcategory, site, technician    | update_request
+Send a reply the requester receives by email      | reply_to_requester
+Add an internal note for the technician only      | add_private_note
+Add a note visible to the requester (no email)    | add_note
+Close a resolved ticket                           | close_request
+Find requests matching criteria                   | search_requests or advanced_search_requests
+Validate a field value before writing             | get_metadata
+Check prior communication                         | get_request_conversation
+
+OUT OF SCOPE — never call as part of request fulfilment:
+- claude_code_command — developer utility only
+- delete_request — irreversible, requires explicit instruction
+- send_first_response — only for first-response SLA tracking
+- create_request — fulfilment agents do not create tickets`
+  }
+};
+
 // Tool implementations with real SDP API
 const toolImplementations = {
   async claude_code_command(params) {
@@ -734,6 +913,34 @@ const toolImplementations = {
     } catch (error) {
       throw new Error(`Failed to add attachment: ${error.message}`);
     }
+  },
+
+  async get_usage_guide(params) {
+    const { section = 'tool-reference' } = params || {};
+    const uri = `sdp://usage/${section}`;
+    const resource = SDP_RESOURCES[uri];
+
+    if (!resource) {
+      const valid = Object.keys(SDP_RESOURCES).map(u => u.replace('sdp://usage/', '')).join(', ');
+      throw new Error(`Unknown section "${section}". Valid sections: ${valid}`);
+    }
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `Usage guide section: ${resource.name}\n\n${resource.text}`
+        },
+        {
+          type: 'resource',
+          resource: {
+            uri: resource.uri,
+            mimeType: resource.mimeType,
+            text: resource.text
+          }
+        }
+      ]
+    };
   }
 };
 
@@ -1313,6 +1520,22 @@ const tools = [
       },
       required: ['request_id', 'file_path']
     }
+  },
+  {
+    name: 'get_usage_guide',
+    description: 'Retrieve a specific section of the SDP usage guide to inform tool usage. Returns structured context about API rules, field formats, tool reference, error codes, action sequences, or the decision matrix.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        section: {
+          type: 'string',
+          description: 'Which section of the guide to retrieve',
+          enum: ['api-rules', 'tool-reference', 'field-formats', 'error-codes', 'action-sequences', 'decision-matrix'],
+          default: 'tool-reference'
+        }
+      },
+      required: []
+    }
   }
 ];
 
@@ -1336,7 +1559,8 @@ function handleJsonRpcMessage(message, sseConnection) {
         result = {
           protocolVersion: '2024-11-05',
           capabilities: {
-            tools: {}
+            tools: {},
+            resources: {}
           },
           serverInfo: {
             name: 'service-desk-plus',
@@ -1344,15 +1568,41 @@ function handleJsonRpcMessage(message, sseConnection) {
           }
         };
         break;
-        
+
       case 'tools/list':
         result = { tools };
         break;
-        
+
       case 'resources/list':
-        // No resources provided by this server
-        result = { resources: [] };
+        result = {
+          resources: Object.values(SDP_RESOURCES).map(r => ({
+            uri: r.uri,
+            name: r.name,
+            description: r.description,
+            mimeType: r.mimeType
+          }))
+        };
         break;
+
+      case 'resources/read': {
+        const resourceUri = (params || {}).uri;
+        const resource = SDP_RESOURCES[resourceUri];
+        if (!resource) {
+          return {
+            jsonrpc: '2.0',
+            error: { code: -32602, message: `Unknown resource URI: ${resourceUri}` },
+            id
+          };
+        }
+        result = {
+          contents: [{
+            uri: resource.uri,
+            mimeType: resource.mimeType,
+            text: resource.text
+          }]
+        };
+        break;
+      }
         
       case 'prompts/list':
         // No prompts provided by this server
