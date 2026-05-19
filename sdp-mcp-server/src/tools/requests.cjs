@@ -29,8 +29,8 @@ function makeImplementations(sdpClient) {
   return {
 
     async list_requests(params) {
-      const { limit = 10, status, priority, sort_by, sort_order } = params;
-      const result = await sdpClient.listRequests({ limit, status, priority, sortBy: sort_by, sortOrder: sort_order });
+      const { limit = 10, status, priority, technician_email, requester_email, sort_by, sort_order } = params;
+      const result = await sdpClient.listRequests({ limit, status, priority, technicianEmail: technician_email, requesterEmail: requester_email, sortBy: sort_by, sortOrder: sort_order });
       const requests = result.requests.map(req => ({
         id: req.id,
         subject: req.subject,
@@ -314,6 +314,8 @@ const schemas = [
         limit: { type: 'number', description: 'Maximum number of requests to return (max 100)', default: 10, maximum: 100 },
         status: { type: 'string', description: 'Filter by status', enum: ['open', 'closed', 'pending', 'resolved', 'cancelled'] },
         priority: { type: 'string', description: 'Filter by priority', enum: ['low', 'medium', 'high', 'urgent'] },
+        technician_email: { type: 'string', description: 'Filter by assigned technician email (e.g. "kschutte@gmfus.org")' },
+        requester_email: { type: 'string', description: 'Filter by requester email' },
         sort_by: { type: 'string', enum: ['created_time', 'due_by_time', 'subject', 'priority'], default: 'created_time' },
         sort_order: { type: 'string', enum: ['asc', 'desc'], default: 'desc' }
       }

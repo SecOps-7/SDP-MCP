@@ -285,13 +285,12 @@ class SDPAPIClientV2 {
    * List requests
    */
   async listRequests(options = {}) {
-    const { limit = 10, offset = 0, status, priority, sortBy = 'created_time', sortOrder = 'desc' } = options;
-    
+    const { limit = 10, offset = 0, status, priority, technicianEmail, requesterEmail, sortBy = 'created_time', sortOrder = 'desc' } = options;
+
     await this.ensureMetadata();
-    
-    // Enforce API maximum of 100 rows per request
+
     const rowCount = Math.min(limit, 100);
-    
+
     const listInfo = {
       row_count: rowCount,
       start_index: offset,
@@ -299,56 +298,33 @@ class SDPAPIClientV2 {
       sort_order: sortOrder,
       get_total_count: true
     };
-    
-    // Add filters - try filter_by for simple filters first
-    if (status && !priority) {
-      // Single status filter - use filter_by
-      const statusMap = {
-        'open': 'Open',
-        'closed': 'Closed',
-        'pending': 'On Hold',
-        'resolved': 'Resolved',
-        'in progress': 'In Progress'
-      };
-      const statusName = statusMap[status.toLowerCase()] || status;
-      listInfo.filter_by = {
-        name: 'status.name',
-        value: statusName
-      };
-    } else if (priority && !status) {
-      // Single priority filter - use filter_by
-      const priorityName = PRIORITY_NAMES[priority.toLowerCase()] || priority;
-      listInfo.filter_by = {
-        name: 'priority.name',
-        value: priorityName
-      };
-    } else if (status && priority) {
-      // Multiple filters - use search_criteria
-      const searchCriteria = [];
-      
-      const statusMap = {
-        'open': 'Open',
-        'closed': 'Closed',
-        'pending': 'On Hold',
-        'resolved': 'Resolved',
-        'in progress': 'In Progress'
-      };
-      const statusName = statusMap[status.toLowerCase()] || status;
-      searchCriteria.push({
-        field: 'status.name',
-        condition: 'is',
-        value: statusName
-      });
-      
-      const priorityName = PRIORITY_NAMES[priority.toLowerCase()] || priority;
-      searchCriteria.push({
-        field: 'priority.name',
-        condition: 'is',
-        value: priorityName,
-        logical_operator: 'AND'
-      });
-      
-      listInfo.search_criteria = searchCriteria;
+
+    const STATUS_MAP = {
+      'open': 'Open', 'closed': 'Closed', 'pending': 'On Hold',
+      'resolved': 'Resolved', 'in progress': 'In Progress', 'on hold': 'On Hold'
+    };
+
+    // Build search_criteria array from whichever filters are provided
+    const criteria = [];
+    if (status) {
+      criteria.push({ field: 'status.name', condition: 'is', value: STATUS_MAP[status.toLowerCase()] || status });
+    }
+    if (priority) {
+      criteria.push({ field: 'priority.name', condition: 'is', value: PRIORITY_NAMES[priority.toLowerCase()] || priority });
+    }
+    if (technicianEmail) {
+      criteria.push({ field: 'technician.email_id', condition: 'is', value: technicianEmail });
+    }
+    if (requesterEmail) {
+      criteria.push({ field: 'requester.email_id', condition: 'is', value: requesterEmail });
+    }
+
+    if (criteria.length === 1) {
+      // Single criterion — use object format
+      listInfo.search_criteria = criteria[0];
+    } else if (criteria.length > 1) {
+      // Multiple criteria — tag second+ elements with AND
+      listInfo.search_criteria = criteria.map((c, i) => i === 0 ? c : { ...c, logical_operator: 'AND' });
     }
     
     const params = {

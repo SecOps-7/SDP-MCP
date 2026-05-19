@@ -2,6 +2,16 @@
 
 All notable changes to the SDP MCP Server are documented here.
 
+## [Unreleased] — 2026-05-19 (session 5)
+
+### New Features
+- **`list_requests` accepts `technician_email` and `requester_email` filters** (`src/tools/requests.cjs`,
+  `src/sdp-api-client-v2.cjs`) — Copilot Studio's AI cannot construct the structured `criteria` array
+  required by `advanced_search_requests` from natural language ("pull up all my assigned requests that are
+  open"), so the two most common person-based filters are now exposed as simple string parameters on
+  `list_requests`. Both are forwarded to `listRequests` as `technicianEmail` / `requesterEmail`, which
+  already builds the correct `search_criteria` objects internally.
+
 ## [Unreleased] — 2026-05-19 (session 4)
 
 ### Bug Fixes
