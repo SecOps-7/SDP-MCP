@@ -307,15 +307,15 @@ function makeImplementations(sdpClient) {
 const schemas = [
   {
     name: 'list_requests',
-    description: 'List service desk requests with optional filters',
+    description: 'List service desk requests. Use this tool for all common queries — it supports filtering by status, priority, assigned technician email, and requester email. Examples: "my open tickets" → set technician_email + status=open; "show high priority requests" → set priority=high; "tickets raised by user@example.com" → set requester_email. Only use advanced_search_requests when these filters are not sufficient (e.g. date ranges, OR logic, custom fields).',
     inputSchema: {
       type: 'object',
       properties: {
         limit: { type: 'number', description: 'Maximum number of requests to return (max 100)', default: 10, maximum: 100 },
-        status: { type: 'string', description: 'Filter by status', enum: ['open', 'closed', 'pending', 'resolved', 'cancelled'] },
+        status: { type: 'string', description: 'Filter by status', enum: ['open', 'closed', 'pending', 'resolved', 'cancelled', 'in progress', 'on hold'] },
         priority: { type: 'string', description: 'Filter by priority', enum: ['low', 'medium', 'high', 'urgent'] },
-        technician_email: { type: 'string', description: 'Filter by assigned technician email (e.g. "kschutte@gmfus.org")' },
-        requester_email: { type: 'string', description: 'Filter by requester email' },
+        technician_email: { type: 'string', description: 'Filter by the email address of the assigned technician (e.g. "kschutte@gmfus.org")' },
+        requester_email: { type: 'string', description: 'Filter by the email address of the requester' },
         sort_by: { type: 'string', enum: ['created_time', 'due_by_time', 'subject', 'priority'], default: 'created_time' },
         sort_order: { type: 'string', enum: ['asc', 'desc'], default: 'desc' }
       }
@@ -394,7 +394,7 @@ const schemas = [
   },
   {
     name: 'close_request',
-    description: 'Close a request with a resolution and closure code (POST /requests/{id}/close). Handles both resolution and closure in a single call.',
+    description: 'Close a service desk request. Provide a resolution summary and an optional closure code (defaults to Resolved). Handles both the resolution text and the closure in a single call.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -436,7 +436,7 @@ const schemas = [
   },
   {
     name: 'add_note',
-    description: 'Add a public note to a request (visible to requester, no email sent)',
+    description: 'Add a public note to a request that is visible to the requester in the portal. Does not send an email — use reply_to_requester to email the requester.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -498,7 +498,7 @@ const schemas = [
   },
   {
     name: 'search_requests',
-    description: 'Search requests by keyword',
+    description: 'Full-text keyword search across request subjects and descriptions. Use list_requests instead when filtering by status, priority, technician, or requester.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -510,7 +510,7 @@ const schemas = [
   },
   {
     name: 'advanced_search_requests',
-    description: 'Search requests using structured field criteria with AND/OR logic (e.g., by requester, technician, date range, priority)',
+    description: 'Advanced search using custom field criteria — only use when list_requests filters are not sufficient. Suited for date ranges, OR logic, custom SDP fields, or combinations unavailable in list_requests. For filtering by status, priority, technician email, or requester email, use list_requests instead.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -520,7 +520,7 @@ const schemas = [
           items: {
             type: 'object',
             properties: {
-              field: { type: 'string', description: 'Field name (e.g., "status.name", "priority.name", "requester.name")' },
+              field: { type: 'string', description: 'SDP field path (e.g., "status.name", "priority.name", "requester.email_id", "technician.email_id", "created_time")' },
               condition: { type: 'string', description: 'Condition (e.g., "is", "is not", "contains", "greater than")' },
               value: { description: 'Value to match against' },
               logical_operator: { type: 'string', enum: ['AND', 'OR'], description: 'Logical join with previous criterion (omit for first)' }
