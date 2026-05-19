@@ -49,8 +49,24 @@ function makeImplementations(sdpClient) {
     async get_request(params) {
       const { request_id } = params;
       validateRequestId(request_id);
-      console.error(`Fetching request: ${request_id}`);
-      const req = await sdpClient.getRequest(request_id);
+
+      // Resolve display_id (short number e.g. 31230) to internal ID (17-digit e.g. 97837000038081358)
+      let internalId = String(request_id);
+      if (/^\d{1,10}$/.test(internalId)) {
+        console.error(`Treating ${request_id} as display_id — resolving to internal ID`);
+        const result = await sdpClient.advancedSearchRequests(
+          [{ field: 'display_id', condition: 'is', value: internalId }],
+          { limit: 1 }
+        );
+        if (!result.requests || result.requests.length === 0) {
+          throw new Error(`No request found with display_id ${request_id}`);
+        }
+        internalId = result.requests[0].id;
+        console.error(`Resolved display_id ${request_id} → ${internalId}`);
+      }
+
+      console.error(`Fetching request: ${internalId}`);
+      const req = await sdpClient.getRequest(internalId);
       const formatted = {
         id: req.id,
         subject: req.subject,
@@ -309,7 +325,7 @@ const schemas = [
     inputSchema: {
       type: 'object',
       properties: {
-        request_id: { type: 'string', description: 'The ID of the request to retrieve' }
+        request_id: { type: 'string', description: 'The request ID — accepts either the short display_id (e.g. "31230") or the full internal ID (e.g. "97837000038081358"). Display IDs are resolved automatically.' }
       },
       required: ['request_id']
     }
