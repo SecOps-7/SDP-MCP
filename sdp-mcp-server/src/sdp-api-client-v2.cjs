@@ -320,11 +320,13 @@ class SDPAPIClientV2 {
     }
 
     if (criteria.length === 1) {
-      // Single criterion — use object format
       listInfo.search_criteria = criteria[0];
     } else if (criteria.length > 1) {
-      // Multiple criteria — tag second+ elements with AND
-      listInfo.search_criteria = criteria.map((c, i) => i === 0 ? c : { ...c, logical_operator: 'AND' });
+      // GET /requests only accepts array format for OR; AND requires children nesting
+      listInfo.search_criteria = {
+        ...criteria[0],
+        children: criteria.slice(1).map(c => ({ ...c, logical_operator: 'AND' }))
+      };
     }
     
     const params = {
