@@ -2,6 +2,45 @@
 
 All notable changes to the SDP MCP Server are documented here.
 
+## [Unreleased] — 2026-05-19 (session 2)
+
+### Refactoring
+- **Modularised `working-sse-server.cjs`** — slimmed from 1769 to 246 lines using a factory
+  function pattern (`makeImplementations(sdpClient)`). Tool implementations extracted into
+  three focused modules:
+  - `src/tools/requests.cjs` — 16 request tools (list, get, create, update, close, notes,
+    replies, search, delete, attachment, conversation)
+  - `src/tools/technicians.cjs` — 3 technician tools (list, get, find)
+  - `src/tools/metadata.cjs` — get_metadata, get_usage_guide, claude_code_command
+- **Extracted MCP Resources** into `src/mcp-resources.cjs` — server now uses
+  `listResources()` / `readResource()` from this module; `metadata.cjs` uses the same
+  module for `get_usage_guide`, eliminating the inline `SDP_RESOURCES` constant.
+
+### New Features
+- **MCP Prompts** (`src/mcp-prompts.cjs`) — four prompt templates wired to `prompts/list`
+  and `prompts/get` protocol handlers; `prompts: {}` declared in `initialize` capabilities:
+  - `resolve_request` — get → update → reply → close workflow
+  - `triage_request` — get → get_metadata → update → reply workflow
+  - `escalate_request` — get → find_technician → update → add_private_note → reply workflow
+  - `follow_up_request` — get_request_conversation → reply workflow
+  All templates use "request" terminology throughout (not "ticket").
+- **Input validation at tool layer** (`src/tools/requests.cjs`) — three validators applied
+  before any API call:
+  - `subject` truncation prevented: error thrown if > 250 characters
+  - `impact_details` truncation prevented: error thrown if > 250 characters
+  - `closure_code` validated against known enum (Resolved, Cancelled, Duplicate, Closed,
+    On Hold, Open) with a clear error message listing valid values
+- **Richer `/health` endpoint** — now async; performs a live OAuth token probe via
+  `sdpClient.testConnection()` and returns `auth_status` (ok / failed / error /
+  not_configured), `instance`, `base_url`, and `data_center` alongside existing fields.
+
+### Dead Code Removal
+- Deleted `src/sdp-api-client.cjs` — superseded by `sdp-api-client-v2.cjs`
+- Deleted `src/sdp-api-client-enhanced.cjs` — no importers
+- Deleted `src/simple-sse-server.cjs` — superseded by `working-sse-server.cjs`
+- Deleted `src/index-sse-simple.ts` — unused TypeScript entry point
+- Deleted `src/index.ts` — unused TypeScript entry point
+
 ## [Unreleased] — 2026-05-19
 
 ### Bug Fixes
