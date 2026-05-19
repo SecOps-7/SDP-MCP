@@ -2,7 +2,7 @@
 
 A Model Context Protocol (MCP) server that integrates with Service Desk Plus Cloud API, enabling AI assistants to perform CRUD operations on all Service Desk Plus entities.
 
-## 🚀 Current Status (January 2025)
+## 🚀 Current Status (May 2026)
 
 🎉 **PRODUCTION READY** - Complete Service Desk Plus MCP Server  
 ✅ **ALL 16 TOOLS WORKING PERFECTLY** (100% Success Rate)  
@@ -10,14 +10,20 @@ A Model Context Protocol (MCP) server that integrates with Service Desk Plus Clo
 ✅ **Email Communication** - Reply to requesters with ticket conversation integration  
 ✅ **Zero OAuth Issues** - Bulletproof token management with rate limit protection  
 ✅ **Complete Testing** - All tools validated through comprehensive client testing  
-✅ **Production Ready** - Robust error handling and business rule compliance
+✅ **Production Ready** - Robust error handling and business rule compliance  
+✅ **Azure/Cloud Ready** - Respects `PORT` environment variable for cloud deployments
 
 ### Recent Improvements
+- 🔧 Fixed API URL — path is `{SDP_BASE_URL}/api/v3` directly (no `/app/{name}` segment)
+- 🔧 Fixed infinite 401 retry loop — axios interceptor now caps at one token refresh per request
+- 🔧 Fixed `testConnection()` — verifies OAuth token only at startup (no API endpoint call)
+- 🔧 Unified `SDP_INSTANCE_NAME` into `SDP_PORTAL_NAME` — single variable serves both roles
+- 🔧 Sanitized hardcoded credentials from source files
+- 🔧 Server now respects `PORT` environment variable for Azure/cloud deployments
 - 🔧 Fixed Authorization header format from Bearer to Zoho-oauthtoken
 - 🔧 Added subcategory as mandatory field for request creation
 - 🔧 Implemented proper list_info structure with search_criteria
 - 🔧 Added advanced search capabilities with complex criteria
-- 🔧 Created comprehensive OAuth and search documentation
 - 🔧 Mock API now perfectly replicates real API behaviors
 - 🔧 **NEW**: Email communication tools for requester replies
 - 🔧 **NEW**: Private notes and first response functionality
@@ -202,19 +208,23 @@ The mock API:
 ### Required Environment Variables
 ```bash
 # Service Desk Plus Configuration
-SDP_BASE_URL=https://helpdesk.yourdomain.com   # Custom domain
-SDP_INSTANCE_NAME=itdesk                       # Instance name
-SDP_PORTAL_NAME=yourportal                     # Portal name
-SDP_DATA_CENTER=US                             # Data center (US, EU, IN, AU, JP, UK, CA, CN)
+SDP_BASE_URL=https://sdpondemand.manageengine.com   # Base URL (or your custom domain)
+SDP_PORTAL_NAME=yourportal                          # Portal/instance name (used for both roles)
+SDP_DATA_CENTER=US                                  # Data center: US, EU, IN, AU, JP, UK, CA, CN
 
 # OAuth Credentials
-SDP_OAUTH_CLIENT_ID=your_client_id
-SDP_OAUTH_CLIENT_SECRET=your_client_secret_here
-SDP_OAUTH_REFRESH_TOKEN=your_permanent_refresh_token_here
+SDP_CLIENT_ID=your_client_id
+SDP_CLIENT_SECRET=your_client_secret
+SDP_REFRESH_TOKEN=your_permanent_refresh_token
 
 # Optional: Use mock API for testing
 SDP_USE_MOCK_API=false
+
+# Optional: Override listen port (set automatically by Azure/cloud platforms)
+# PORT=8080
 ```
+
+> **Note**: `SDP_PORTAL_NAME` replaces the former `SDP_INSTANCE_NAME` — a single variable now covers both the portal name and instance name roles. The `SDP_OAUTH_*` variable prefix has been dropped; use `SDP_CLIENT_ID`, `SDP_CLIENT_SECRET`, and `SDP_REFRESH_TOKEN` directly.
 
 ### OAuth Setup Steps
 1. Create a self-client OAuth app in Service Desk Plus
@@ -244,21 +254,30 @@ When MCP protocol evolves to support stateless connections:
 
 ### Common Issues
 
-1. **OAuth Rate Limiting**
-   - Error: "You have made too many requests continuously"
-   - Solution: Wait 5-15 minutes, server implements proper token reuse
+1. **API URL / 404 on all endpoints**
+   - Cause: Incorrect base URL format — the API path does not include `/app/{name}`
+   - Solution: Set `SDP_BASE_URL` to the root of your SDP instance (e.g. `https://sdpondemand.manageengine.com`) — the client appends `/api/v3` automatically
 
-2. **Field Validation Errors (4012)**
+2. **OAuth Rate Limiting**
+   - Error: "You have made too many requests continuously"
+   - Solution: Wait 5-15 minutes; server implements singleton OAuth client with proper token reuse
+
+3. **Authentication Errors (401) / Infinite retry loop**
+   - Error: "UNAUTHORISED" repeated in logs
+   - Solution: Verify `SDP_CLIENT_ID`, `SDP_CLIENT_SECRET`, and `SDP_REFRESH_TOKEN` are set correctly. The server now caps token refresh at one attempt per request to prevent loops.
+
+4. **Field Validation Errors (4012)**
    - Error: Missing mandatory fields
    - Solution: Check instance configuration for required fields
 
-3. **Priority Update Errors (403)**
+5. **Priority Update Errors (403)**
    - Error: "Cannot give value for priority"
-   - Solution: This is an API limitation, priority may not be updatable
+   - Solution: This is an API limitation, priority may not be updatable via this endpoint
 
-4. **Authentication Errors (401)**
-   - Error: "UNAUTHORISED"
-   - Solution: Verify OAuth tokens and custom domain configuration
+6. **Azure / Cloud Deployment**
+   - The server automatically reads the `PORT` environment variable injected by Azure App Service (default 8080)
+   - Set all OAuth variables under **Settings → Environment Variables** in the Azure portal
+   - The startup log prints `SDP env check:` diagnostics to confirm variables are loaded
 
 ### Debug Mode
 ```bash
