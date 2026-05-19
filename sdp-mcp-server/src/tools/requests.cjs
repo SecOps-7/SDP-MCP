@@ -29,8 +29,8 @@ function makeImplementations(sdpClient) {
   return {
 
     async list_requests(params) {
-      const { limit = 10, status, priority, technician_email, requester_email, sort_by, sort_order } = params;
-      const result = await sdpClient.listRequests({ limit, status, priority, technicianEmail: technician_email, requesterEmail: requester_email, sortBy: sort_by, sortOrder: sort_order });
+      const { limit = 10, status, priority, sort_by, sort_order } = params;
+      const result = await sdpClient.listRequests({ limit, status, priority, sortBy: sort_by, sortOrder: sort_order });
       const requests = result.requests.map(req => ({
         id: req.id,
         subject: req.subject,
@@ -307,15 +307,13 @@ function makeImplementations(sdpClient) {
 const schemas = [
   {
     name: 'list_requests',
-    description: 'List service desk requests. Use this tool for all common queries — it supports filtering by status, priority, assigned technician email, and requester email. Examples: "my open tickets" → set technician_email + status=open; "show high priority requests" → set priority=high; "tickets raised by user@example.com" → set requester_email. Only use advanced_search_requests when these filters are not sufficient (e.g. date ranges, OR logic, custom fields).',
+    description: 'List service desk requests with optional filters',
     inputSchema: {
       type: 'object',
       properties: {
         limit: { type: 'number', description: 'Maximum number of requests to return (max 100)', default: 10, maximum: 100 },
-        status: { type: 'string', description: 'Filter by status', enum: ['open', 'closed', 'pending', 'resolved', 'cancelled', 'in progress', 'on hold'] },
+        status: { type: 'string', description: 'Filter by status', enum: ['open', 'closed', 'pending', 'resolved', 'cancelled'] },
         priority: { type: 'string', description: 'Filter by priority', enum: ['low', 'medium', 'high', 'urgent'] },
-        technician_email: { type: 'string', description: 'Filter by the email address of the assigned technician (e.g. "kschutte@gmfus.org")' },
-        requester_email: { type: 'string', description: 'Filter by the email address of the requester' },
         sort_by: { type: 'string', enum: ['created_time', 'due_by_time', 'subject', 'priority'], default: 'created_time' },
         sort_order: { type: 'string', enum: ['asc', 'desc'], default: 'desc' }
       }
