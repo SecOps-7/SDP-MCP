@@ -77,9 +77,18 @@ class SDPAPIClientV2 {
     // Response interceptor
     this.client.interceptors.response.use(
       (response) => {
+        // Log response summary for list endpoints so empty-result searches are visible
+        if (response.data?.list_info !== undefined) {
+          const li = response.data.list_info;
+          console.error(`API Response: ${response.status} — total_count=${li.total_count ?? 'n/a'} has_more=${li.has_more_rows ?? false} start_index=${li.start_index ?? 'n/a'}`);
+          if ((li.total_count === 0 || !response.data.requests?.length) && response.config?.params?.input_data) {
+            console.error('Empty result — search_criteria sent:', JSON.stringify(
+              JSON.parse(response.config.params.input_data)?.list_info?.search_criteria ?? 'none'
+            ));
+          }
+        }
         // Some responses have response_status array instead of object
         if (Array.isArray(response.data?.response_status)) {
-          // This is actually a successful response with data
           return response;
         }
         return response;
