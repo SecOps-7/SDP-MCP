@@ -1226,6 +1226,81 @@ class SDPAPIClientV2 {
       start_index: response.data.list_info?.start_index
     };
   }
+
+  async searchRequestsFlat(filters = {}, options = {}) {
+    const {
+      technician_email, requester_email, subject_contains,
+      category, group,
+      created_after, created_before, due_before,
+      status, priority
+    } = filters;
+
+    const { limit = 10, page = 1, sortBy = 'created_time', sortOrder = 'desc' } = options;
+
+    const rowCount = Math.min(limit, 100);
+    const listInfo = {
+      row_count: rowCount,
+      start_index: (page - 1) * rowCount,
+      sort_field: sortBy,
+      sort_order: sortOrder,
+      get_total_count: true
+    };
+
+    const STATUS_MAP = {
+      'open': 'Open', 'closed': 'Closed', 'pending': 'On Hold',
+      'resolved': 'Resolved', 'cancelled': 'Cancelled',
+      'in progress': 'In Progress', 'on hold': 'On Hold'
+    };
+
+    // Build the list of advanced criteria (non-status/priority filters)
+    const criteriaList = [];
+    if (technician_email)  criteriaList.push({ field: 'technician.email_id', condition: 'is',           value: technician_email });
+    if (requester_email)   criteriaList.push({ field: 'requester.email_id',  condition: 'is',           value: requester_email });
+    if (subject_contains)  criteriaList.push({ field: 'subject',             condition: 'contains',     value: subject_contains });
+    if (category)          criteriaList.push({ field: 'category.name',       condition: 'is',           value: category });
+    if (group)             criteriaList.push({ field: 'group.name',          condition: 'is',           value: group });
+    if (created_after)     criteriaList.push({ field: 'created_time',        condition: 'greater than', value: created_after });
+    if (created_before)    criteriaList.push({ field: 'created_time',        condition: 'less than',    value: created_before });
+    if (due_before)        criteriaList.push({ field: 'due_by_time',         condition: 'less than',    value: due_before });
+
+    if (criteriaList.length === 0) {
+      // No advanced filters — use filter_by for status/priority (confirmed working)
+      if (status) {
+        listInfo.filter_by = { name: 'status.name', value: STATUS_MAP[status.toLowerCase()] || status };
+      } else if (priority) {
+        listInfo.filter_by = { name: 'priority.name', value: PRIORITY_NAMES[priority.toLowerCase()] || priority };
+      }
+    } else {
+      // Advanced filters present — fold status/priority into the criteria list
+      if (status)   criteriaList.push({ field: 'status.name',   condition: 'is', value: STATUS_MAP[status.toLowerCase()] || status });
+      if (priority) criteriaList.push({ field: 'priority.name', condition: 'is', value: PRIORITY_NAMES[priority.toLowerCase()] || priority });
+
+      if (criteriaList.length === 1) {
+        listInfo.search_criteria = criteriaList[0];
+      } else {
+        // Children nesting: primary criterion + remaining as children (documented multi-criteria format)
+        const [primary, ...rest] = criteriaList;
+        listInfo.search_criteria = {
+          ...primary,
+          logical_operator: 'AND',
+          children: rest.map((c, i) => i === 0 ? c : { ...c, logical_operator: 'AND' })
+        };
+      }
+    }
+
+    console.error(`searchRequestsFlat: list_info=${JSON.stringify(listInfo)}`);
+    const params = { input_data: JSON.stringify({ list_info: listInfo }) };
+    const response = await this.client.get('/requests', { params });
+    console.error(`searchRequestsFlat: HTTP ${response.status}, requests=${response.data?.requests?.length ?? 0}, total=${response.data?.list_info?.total_count}`);
+    if (response.data?.response_status?.status_code !== 2000 && response.data?.response_status?.messages) {
+      console.error(`searchRequestsFlat: API error: ${JSON.stringify(response.data.response_status.messages)}`);
+    }
+    return {
+      requests: response.data.requests || [],
+      total_count: response.data.list_info?.total_count || 0,
+      has_more: response.data.list_info?.has_more_rows || false
+    };
+  }
   
   /**
    * Add email notifications to a request

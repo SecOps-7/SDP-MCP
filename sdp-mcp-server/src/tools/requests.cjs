@@ -266,14 +266,21 @@ function makeImplementations(sdpClient) {
     },
 
     async advanced_search_requests(params) {
-      const { criteria, limit = 10, page = 1, sort_by = 'created_time', sort_order = 'desc' } = params;
-      if (!criteria || !Array.isArray(criteria) || criteria.length === 0) {
-        throw new Error('criteria array is required and must not be empty');
-      }
-      console.error(`advanced_search_requests: ${criteria.length} criteria, limit=${limit}, page=${page}`);
-      console.error(`advanced_search_requests criteria: ${JSON.stringify(criteria)}`);
-      const result = await sdpClient.advancedSearchRequests(criteria, { limit, page, sortBy: sort_by, sortOrder: sort_order });
-      console.error(`advanced_search_requests: returned ${result.requests?.length ?? 0} requests (total_count=${result.total_count})`);
+      const {
+        technician_email, requester_email, subject_contains,
+        category, group, created_after, created_before, due_before,
+        status, priority,
+        limit = 10, page = 1, sort_by = 'created_time', sort_order = 'desc'
+      } = params;
+
+      console.error(`advanced_search_requests: technician_email=${technician_email || '-'}, requester_email=${requester_email || '-'}, status=${status || '-'}, priority=${priority || '-'}, subject_contains=${subject_contains || '-'}`);
+
+      const result = await sdpClient.searchRequestsFlat(
+        { technician_email, requester_email, subject_contains, category, group, created_after, created_before, due_before, status, priority },
+        { limit, page, sortBy: sort_by, sortOrder: sort_order }
+      );
+
+      console.error(`advanced_search_requests: returned ${result.requests?.length ?? 0} requests (total=${result.total_count})`);
       return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
     },
 
@@ -511,36 +518,26 @@ const schemas = [
   },
   {
     name: 'advanced_search_requests',
-    description: 'Advanced multi-field search for service desk requests. Use when filtering by technician, requester, date ranges, OR logic, or any combination not supported by list_requests (which only filters by status and priority).\n\nNEVER ask the user for field paths — derive them from context using this mapping:\n- "assigned to <email>" → {field:"technician.email_id", condition:"is", value:"<email>"}\n- "requested by / submitted by <email>" → {field:"requester.email_id", condition:"is", value:"<email>"}\n- "open / closed / pending / resolved" → {field:"status.name", condition:"is", value:"Open"} (capitalise: Open, Closed, Pending, Resolved, Cancelled, In Progress, On Hold)\n- "high / low / urgent priority" → {field:"priority.name", condition:"is", value:"3 - High"} (use get_metadata for exact names if unsure)\n- "subject contains X" → {field:"subject", condition:"contains", value:"X"}\n- "created after <date>" → {field:"created_time", condition:"greater than", value:<unix epoch ms>}\n- "created before <date>" → {field:"created_time", condition:"less than", value:<unix epoch ms>}\n- "due before <date>" → {field:"due_by_time", condition:"less than", value:<unix epoch ms>}\n- "group / team is X" → {field:"group.name", condition:"is", value:"X"}\n- "category is X" → {field:"category.name", condition:"is", value:"X"}\n\nDates must be Unix epoch milliseconds (e.g., 2025-01-01T00:00:00Z = 1735689600000). Convert any date the user mentions before calling this tool.',
+    description: 'Search requests by technician, requester, subject, category, group, or date ranges — optionally combined with status and priority. Use this instead of list_requests when filtering by anything other than status or priority alone.',
     inputSchema: {
       type: 'object',
       properties: {
-        criteria: {
-          type: 'array',
-          description: 'Array of search criteria. Build from context — do not ask the user for field names. First criterion must not include logical_operator. Subsequent criteria use logical_operator AND or OR.',
-          items: {
-            type: 'object',
-            properties: {
-              field: {
-                type: 'string',
-                description: 'SDP field path to filter on. Common values: "status.name", "priority.name", "technician.email_id", "requester.email_id", "subject", "created_time", "due_by_time", "request_type.name", "category.name", "group.name"'
-              },
-              condition: {
-                type: 'string',
-                description: 'Comparison operator. Common values: "is", "is not", "contains", "does not contain", "starts with", "greater than", "less than"'
-              },
-              value: { description: 'Value to match. Dates must be Unix epoch milliseconds.' },
-              logical_operator: { type: 'string', enum: ['AND', 'OR'], description: 'Logical join with the previous criterion. Omit on the first criterion.' }
-            },
-            required: ['field', 'condition', 'value']
-          }
-        },
-        limit: { type: 'number', description: 'Maximum results (max 100)', default: 10, maximum: 100 },
-        page: { type: 'number', description: 'Page number (1-based)', default: 1 },
-        sort_by: { type: 'string', description: 'Field to sort by', default: 'created_time' },
+        technician_email: { type: 'string', description: 'Filter by assigned technician email address (e.g. "jsmith@example.com")' },
+        requester_email:  { type: 'string', description: 'Filter by requester email address' },
+        subject_contains: { type: 'string', description: 'Filter requests whose subject contains this text' },
+        category:         { type: 'string', description: 'Filter by category name (exact match)' },
+        group:            { type: 'string', description: 'Filter by group or team name (exact match)' },
+        created_after:    { type: 'number', description: 'Return requests created after this Unix epoch millisecond timestamp' },
+        created_before:   { type: 'number', description: 'Return requests created before this Unix epoch millisecond timestamp' },
+        due_before:       { type: 'number', description: 'Return requests due before this Unix epoch millisecond timestamp' },
+        status:   { type: 'string', description: 'Filter by status',   enum: ['open', 'closed', 'pending', 'resolved', 'cancelled', 'in progress', 'on hold'] },
+        priority: { type: 'string', description: 'Filter by priority', enum: ['low', 'medium', 'high', 'urgent'] },
+        limit:      { type: 'number', description: 'Maximum results (max 100)', default: 10, maximum: 100 },
+        page:       { type: 'number', description: 'Page number (1-based)', default: 1 },
+        sort_by:    { type: 'string', enum: ['created_time', 'due_by_time', 'subject', 'priority'], default: 'created_time' },
         sort_order: { type: 'string', enum: ['asc', 'desc'], default: 'desc' }
       },
-      required: ['criteria']
+      required: []
     }
   },
   {
