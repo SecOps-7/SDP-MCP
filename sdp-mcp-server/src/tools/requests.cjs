@@ -523,13 +523,11 @@ const schemas = [
             properties: {
               field: {
                 type: 'string',
-                description: 'SDP field path to filter on',
-                enum: ['status.name', 'priority.name', 'technician.email_id', 'requester.email_id', 'subject', 'created_time', 'due_by_time', 'request_type.name', 'category.name', 'subcategory.name', 'group.name', 'site.name', 'mode.name', 'level.name', 'urgency.name', 'impact.name']
+                description: 'SDP field path to filter on. Common values: "status.name", "priority.name", "technician.email_id", "requester.email_id", "subject", "created_time", "due_by_time", "request_type.name", "category.name", "group.name"'
               },
               condition: {
                 type: 'string',
-                description: 'Comparison operator',
-                enum: ['is', 'is not', 'contains', 'does not contain', 'starts with', 'greater than', 'less than', 'greater than or equal', 'less than or equal']
+                description: 'Comparison operator. Common values: "is", "is not", "contains", "does not contain", "starts with", "greater than", "less than"'
               },
               value: { description: 'Value to match. Dates must be Unix epoch milliseconds.' },
               logical_operator: { type: 'string', enum: ['AND', 'OR'], description: 'Logical join with the previous criterion. Omit on the first criterion.' }
