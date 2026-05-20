@@ -270,7 +270,10 @@ function makeImplementations(sdpClient) {
       if (!criteria || !Array.isArray(criteria) || criteria.length === 0) {
         throw new Error('criteria array is required and must not be empty');
       }
+      console.error(`advanced_search_requests: ${criteria.length} criteria, limit=${limit}, page=${page}`);
+      console.error(`advanced_search_requests criteria: ${JSON.stringify(criteria)}`);
       const result = await sdpClient.advancedSearchRequests(criteria, { limit, page, sortBy: sort_by, sortOrder: sort_order });
+      console.error(`advanced_search_requests: returned ${result.requests?.length ?? 0} requests (total_count=${result.total_count})`);
       return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
     },
 

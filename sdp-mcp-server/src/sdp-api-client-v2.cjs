@@ -1213,7 +1213,12 @@ class SDPAPIClientV2 {
       input_data: JSON.stringify({ list_info: listInfo })
     };
 
+    console.error(`advancedSearchRequests: sending search_criteria=${JSON.stringify(normalisedCriteria)}`);
     const response = await this.client.get('/requests', { params });
+    console.error(`advancedSearchRequests: HTTP ${response.status}, response_code=${response.data?.response_status?.status_code}, requests=${response.data?.requests?.length ?? 0}, total_count=${response.data?.list_info?.total_count}`);
+    if (response.data?.response_status?.status_code !== 2000 && response.data?.response_status?.messages) {
+      console.error(`advancedSearchRequests: API messages: ${JSON.stringify(response.data.response_status.messages)}`);
+    }
     return {
       requests: response.data.requests || [],
       total_count: response.data.list_info?.total_count || 0,
