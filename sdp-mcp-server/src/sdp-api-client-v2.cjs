@@ -1263,49 +1263,31 @@ class SDPAPIClientV2 {
     if (created_before)    criteriaList.push({ field: 'created_time',        condition: 'less than',    value: created_before });
     if (due_before)        criteriaList.push({ field: 'due_by_time',         condition: 'less than',    value: due_before });
 
-    if (criteriaList.length > 0) {
-      // Advanced filter present — send as single search_criteria plain object.
-      // filter_by and search_criteria do not combine on this instance (filter_by wins and
-      // search_criteria is silently ignored). So we omit filter_by and apply status/priority
-      // in JavaScript after the API call.
-      if (criteriaList.length > 1) {
-        console.error(`searchRequestsFlat: WARNING — ${criteriaList.length} advanced filters supplied; only the first (${criteriaList[0].field}) will be sent. Multi-criteria search_criteria causes 400 on this instance.`);
-      }
-      listInfo.search_criteria = criteriaList[0];
-    } else {
-      // No advanced filters — use filter_by for status/priority (confirmed working).
-      if (status) {
-        listInfo.filter_by = { name: 'status.name', value: STATUS_MAP[status.toLowerCase()] || status };
-      } else if (priority) {
-        listInfo.filter_by = { name: 'priority.name', value: PRIORITY_NAMES[priority.toLowerCase()] || priority };
-      }
-    }
+    // Try flat reference fields directly in list_info — simpler than search_criteria
+    // and avoids the filter_by vs search_criteria conflict on this instance.
+    if (technician_email) listInfo.technician = { email_id: technician_email };
+    if (requester_email)  listInfo.requester  = { email_id: requester_email };
+    if (status)           listInfo.status     = { name: STATUS_MAP[status.toLowerCase()] || status };
+    if (priority)         listInfo.priority   = { name: PRIORITY_NAMES[priority.toLowerCase()] || priority };
+    if (category)         listInfo.category   = { name: category };
+    if (group)            listInfo.group      = { name: group };
+
+    // subject, date range — still use search_criteria (single plain object)
+    if (subject_contains) listInfo.search_criteria = { field: 'subject', condition: 'contains', value: subject_contains };
+    else if (created_after)  listInfo.search_criteria = { field: 'created_time', condition: 'greater than', value: created_after };
+    else if (created_before) listInfo.search_criteria = { field: 'created_time', condition: 'less than',    value: created_before };
+    else if (due_before)     listInfo.search_criteria = { field: 'due_by_time',  condition: 'less than',    value: due_before };
 
     console.error(`searchRequestsFlat: list_info=${JSON.stringify(listInfo)}`);
     const params = { input_data: JSON.stringify({ list_info: listInfo }) };
     const response = await this.client.get('/requests', { params });
-
-    let requests = response.data.requests || [];
-
-    // When search_criteria is used, filter_by is omitted — apply status/priority in JS.
-    if (criteriaList.length > 0) {
-      if (status) {
-        const statusVal = (STATUS_MAP[status.toLowerCase()] || status).toLowerCase();
-        requests = requests.filter(r => r.status?.name?.toLowerCase() === statusVal);
-      }
-      if (priority) {
-        const priorityVal = (PRIORITY_NAMES[priority.toLowerCase()] || priority).toLowerCase();
-        requests = requests.filter(r => r.priority?.name?.toLowerCase() === priorityVal);
-      }
-    }
-
-    console.error(`searchRequestsFlat: HTTP ${response.status}, api_count=${response.data?.requests?.length ?? 0}, after_js_filter=${requests.length}, total=${response.data?.list_info?.total_count}`);
+    console.error(`searchRequestsFlat: HTTP ${response.status}, requests=${response.data?.requests?.length ?? 0}, total=${response.data?.list_info?.total_count}`);
     if (response.data?.response_status?.status_code !== 2000 && response.data?.response_status?.messages) {
       console.error(`searchRequestsFlat: API error: ${JSON.stringify(response.data.response_status.messages)}`);
     }
     return {
-      requests,
-      total_count: requests.length,
+      requests: response.data.requests || [],
+      total_count: response.data.list_info?.total_count || 0,
       has_more: response.data.list_info?.has_more_rows || false
     };
   }
