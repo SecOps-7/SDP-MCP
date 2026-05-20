@@ -43,40 +43,6 @@ function makeImplementations(sdpClient) {
       };
     },
 
-    async claude_code_command(params) {
-      const { command, project_path, args = [] } = params;
-      const allowedCommands = {
-        'open_project': 'Open a project in Claude Code',
-        'create_file': 'Create a new file',
-        'read_file': 'Read file contents',
-        'write_file': 'Write content to file',
-        'list_files': 'List files in directory',
-        'run_command': 'Run a shell command',
-        'git_status': 'Check git status',
-        'git_commit': 'Create a git commit'
-      };
-      if (!allowedCommands[command]) {
-        throw new Error(`Unknown command: ${command}. Available: ${Object.keys(allowedCommands).join(', ')}`);
-      }
-      let message = `To execute '${command}' in Claude Code:\n`;
-      switch (command) {
-        case 'open_project':    message += `1. Open Claude Code\n2. Navigate to: ${project_path || process.cwd()}\n3. The MCP server project is in the configured working directory`; break;
-        case 'create_file':     message += `1. Use the 'Write' tool to create: ${args[0] || 'filename.js'}`; break;
-        case 'read_file':       message += `1. Use the 'Read' tool for: ${args[0] || 'filename'}`; break;
-        case 'list_files':      message += `1. Use the 'LS' tool for: ${project_path || '.'}`; break;
-        case 'run_command':     message += `1. Use the 'Bash' tool\n2. Command: ${args.join(' ') || 'npm test'}`; break;
-        case 'git_status':      message += `1. Use 'Bash' tool with: git status`; break;
-        case 'git_commit':      message += `1. Stage files: git add .\n2. Commit: git commit -m "${args[0] || 'Update from MCP'}"`; break;
-        default:                message += `Command '${command}' recognized but not implemented yet`;
-      }
-      return {
-        content: [{
-          type: 'text',
-          text: JSON.stringify({ command, status: 'instructions', message, project_info: { current_directory: process.cwd() } }, null, 2)
-        }]
-      };
-    }
-
   };
 }
 
@@ -102,23 +68,6 @@ const schemas = [
       required: []
     }
   },
-  {
-    name: 'claude_code_command',
-    description: 'Execute Claude Code commands or get instructions for Claude Code integration. Developer utility — do not use in request fulfilment workflows.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        command: {
-          type: 'string',
-          description: 'Command to execute',
-          enum: ['open_project', 'create_file', 'read_file', 'write_file', 'list_files', 'run_command', 'git_status', 'git_commit']
-        },
-        project_path: { type: 'string', description: 'Path to project or file', default: process.cwd() },
-        args: { type: 'array', items: { type: 'string' }, description: 'Additional arguments' }
-      },
-      required: ['command']
-    }
-  }
 ];
 
 module.exports = { makeImplementations, schemas };
