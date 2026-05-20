@@ -1263,29 +1263,20 @@ class SDPAPIClientV2 {
     if (created_before)    criteriaList.push({ field: 'created_time',        condition: 'less than',    value: created_before });
     if (due_before)        criteriaList.push({ field: 'due_by_time',         condition: 'less than',    value: due_before });
 
-    if (criteriaList.length === 0) {
-      // No advanced filters — use filter_by for status/priority (confirmed working)
-      if (status) {
-        listInfo.filter_by = { name: 'status.name', value: STATUS_MAP[status.toLowerCase()] || status };
-      } else if (priority) {
-        listInfo.filter_by = { name: 'priority.name', value: PRIORITY_NAMES[priority.toLowerCase()] || priority };
-      }
-    } else {
-      // Advanced filters present — fold status/priority into the criteria list
-      if (status)   criteriaList.push({ field: 'status.name',   condition: 'is', value: STATUS_MAP[status.toLowerCase()] || status });
-      if (priority) criteriaList.push({ field: 'priority.name', condition: 'is', value: PRIORITY_NAMES[priority.toLowerCase()] || priority });
+    // Status and priority always go through filter_by (confirmed working on this instance).
+    // search_criteria must be a single plain object — arrays and children nesting cause 400.
+    // If multiple advanced filters are given, use the first and note the rest are ignored.
+    if (status) {
+      listInfo.filter_by = { name: 'status.name', value: STATUS_MAP[status.toLowerCase()] || status };
+    } else if (priority) {
+      listInfo.filter_by = { name: 'priority.name', value: PRIORITY_NAMES[priority.toLowerCase()] || priority };
+    }
 
-      if (criteriaList.length === 1) {
-        listInfo.search_criteria = criteriaList[0];
-      } else {
-        // Children nesting: primary criterion + remaining as children (documented multi-criteria format)
-        const [primary, ...rest] = criteriaList;
-        listInfo.search_criteria = {
-          ...primary,
-          logical_operator: 'AND',
-          children: rest.map((c, i) => i === 0 ? c : { ...c, logical_operator: 'AND' })
-        };
+    if (criteriaList.length > 0) {
+      if (criteriaList.length > 1) {
+        console.error(`searchRequestsFlat: WARNING — ${criteriaList.length} advanced filters supplied; only the first (${criteriaList[0].field}) will be sent to the API. This instance rejects multi-criteria search_criteria.`);
       }
+      listInfo.search_criteria = criteriaList[0];
     }
 
     console.error(`searchRequestsFlat: list_info=${JSON.stringify(listInfo)}`);
