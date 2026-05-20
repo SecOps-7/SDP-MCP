@@ -80,7 +80,10 @@ class SDPAPIClientV2 {
         // Log response summary for list endpoints so empty-result searches are visible
         if (response.data?.list_info !== undefined) {
           const li = response.data.list_info;
-          console.error(`API Response: ${response.status} — total_count=${li.total_count ?? 'n/a'} has_more=${li.has_more_rows ?? false} start_index=${li.start_index ?? 'n/a'}`);
+          const itemCount = li.total_count ??
+            response.data.requests?.length ?? response.data.notes?.length ??
+            response.data.technicians?.length ?? response.data.problems?.length ?? 'n/a';
+          console.error(`API Response: ${response.status} — total_count=${itemCount} has_more=${li.has_more_rows ?? false} start_index=${li.start_index ?? 'n/a'}`);
           const hasResults = response.data.requests?.length || response.data.notes?.length ||
             response.data.technicians?.length || response.data.problems?.length;
           if ((li.total_count === 0 || !hasResults) && response.config?.params?.input_data) {
