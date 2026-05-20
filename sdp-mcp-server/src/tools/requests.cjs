@@ -508,20 +508,28 @@ const schemas = [
   },
   {
     name: 'advanced_search_requests',
-    description: 'Advanced search using custom field criteria. Use this when you need to filter by technician email, requester email, date ranges, OR logic, or any field not available in list_requests. list_requests only supports filtering by status and priority.',
+    description: 'Advanced multi-field search for service desk requests. Use when filtering by technician, requester, date ranges, OR logic, or any combination not supported by list_requests (which only filters by status and priority).\n\nNEVER ask the user for field paths — derive them from context using this mapping:\n- "assigned to <email>" → {field:"technician.email_id", condition:"is", value:"<email>"}\n- "requested by / submitted by <email>" → {field:"requester.email_id", condition:"is", value:"<email>"}\n- "open / closed / pending / resolved" → {field:"status.name", condition:"is", value:"Open"} (capitalise: Open, Closed, Pending, Resolved, Cancelled, In Progress, On Hold)\n- "high / low / urgent priority" → {field:"priority.name", condition:"is", value:"3 - High"} (use get_metadata for exact names if unsure)\n- "subject contains X" → {field:"subject", condition:"contains", value:"X"}\n- "created after <date>" → {field:"created_time", condition:"greater than", value:<unix epoch ms>}\n- "created before <date>" → {field:"created_time", condition:"less than", value:<unix epoch ms>}\n- "due before <date>" → {field:"due_by_time", condition:"less than", value:<unix epoch ms>}\n- "group / team is X" → {field:"group.name", condition:"is", value:"X"}\n- "category is X" → {field:"category.name", condition:"is", value:"X"}\n\nDates must be Unix epoch milliseconds (e.g., 2025-01-01T00:00:00Z = 1735689600000). Convert any date the user mentions before calling this tool.',
     inputSchema: {
       type: 'object',
       properties: {
         criteria: {
           type: 'array',
-          description: 'Array of search criteria objects',
+          description: 'Array of search criteria. Build from context — do not ask the user for field names. First criterion must not include logical_operator. Subsequent criteria use logical_operator AND or OR.',
           items: {
             type: 'object',
             properties: {
-              field: { type: 'string', description: 'SDP field path (e.g., "status.name", "priority.name", "requester.email_id", "technician.email_id", "created_time")' },
-              condition: { type: 'string', description: 'Condition (e.g., "is", "is not", "contains", "greater than")' },
-              value: { description: 'Value to match against' },
-              logical_operator: { type: 'string', enum: ['AND', 'OR'], description: 'Logical join with previous criterion (omit for first)' }
+              field: {
+                type: 'string',
+                description: 'SDP field path to filter on',
+                enum: ['status.name', 'priority.name', 'technician.email_id', 'requester.email_id', 'subject', 'created_time', 'due_by_time', 'request_type.name', 'category.name', 'subcategory.name', 'group.name', 'site.name', 'mode.name', 'level.name', 'urgency.name', 'impact.name']
+              },
+              condition: {
+                type: 'string',
+                description: 'Comparison operator',
+                enum: ['is', 'is not', 'contains', 'does not contain', 'starts with', 'greater than', 'less than', 'greater than or equal', 'less than or equal']
+              },
+              value: { description: 'Value to match. Dates must be Unix epoch milliseconds.' },
+              logical_operator: { type: 'string', enum: ['AND', 'OR'], description: 'Logical join with the previous criterion. Omit on the first criterion.' }
             },
             required: ['field', 'condition', 'value']
           }
