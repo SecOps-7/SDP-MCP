@@ -508,7 +508,7 @@ const schemas = [
   },
   {
     name: 'advanced_search_requests',
-    description: 'Advanced search using custom field criteria — only use when list_requests filters are not sufficient. Suited for date ranges, OR logic, custom SDP fields, or combinations unavailable in list_requests. For filtering by status, priority, technician email, or requester email, use list_requests instead.',
+    description: 'Advanced search using custom field criteria. Use this when you need to filter by technician email, requester email, date ranges, OR logic, or any field not available in list_requests. list_requests only supports filtering by status and priority.',
     inputSchema: {
       type: 'object',
       properties: {
