@@ -81,7 +81,9 @@ class SDPAPIClientV2 {
         if (response.data?.list_info !== undefined) {
           const li = response.data.list_info;
           console.error(`API Response: ${response.status} — total_count=${li.total_count ?? 'n/a'} has_more=${li.has_more_rows ?? false} start_index=${li.start_index ?? 'n/a'}`);
-          if ((li.total_count === 0 || !response.data.requests?.length) && response.config?.params?.input_data) {
+          const hasResults = response.data.requests?.length || response.data.notes?.length ||
+            response.data.technicians?.length || response.data.problems?.length;
+          if ((li.total_count === 0 || !hasResults) && response.config?.params?.input_data) {
             console.error('Empty result — search_criteria sent:', JSON.stringify(
               JSON.parse(response.config.params.input_data)?.list_info?.search_criteria ?? 'none'
             ));
