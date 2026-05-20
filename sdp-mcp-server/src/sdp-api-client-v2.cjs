@@ -1193,7 +1193,8 @@ class SDPAPIClientV2 {
             const { logical_operator, ...rest } = c;
             return rest;
           }
-          return c;
+          // logical_operator must be lowercase on this instance
+          return { ...c, logical_operator: (c.logical_operator || 'and').toLowerCase() };
         });
       }
     } else {
@@ -1263,20 +1264,27 @@ class SDPAPIClientV2 {
     if (created_before)    criteriaList.push({ field: 'created_time',        condition: 'less than',    value: created_before });
     if (due_before)        criteriaList.push({ field: 'due_by_time',         condition: 'less than',    value: due_before });
 
-    // Try flat reference fields directly in list_info — simpler than search_criteria
-    // and avoids the filter_by vs search_criteria conflict on this instance.
-    if (technician_email) listInfo.technician = { email_id: technician_email };
-    if (requester_email)  listInfo.requester  = { email_id: requester_email };
-    if (status)           listInfo.status     = { name: STATUS_MAP[status.toLowerCase()] || status };
-    if (priority)         listInfo.priority   = { name: PRIORITY_NAMES[priority.toLowerCase()] || priority };
-    if (category)         listInfo.category   = { name: category };
-    if (group)            listInfo.group      = { name: group };
+    // Build search_criteria array. logical_operator must be lowercase "and"/"or".
+    // First element never has logical_operator; subsequent elements use "and".
+    const criteriaList = [];
+    if (technician_email)  criteriaList.push({ field: 'technician.email_id', condition: 'is',           value: technician_email });
+    if (requester_email)   criteriaList.push({ field: 'requester.email_id',  condition: 'is',           value: requester_email });
+    if (subject_contains)  criteriaList.push({ field: 'subject',             condition: 'contains',     value: subject_contains });
+    if (category)          criteriaList.push({ field: 'category.name',       condition: 'is',           value: category });
+    if (group)             criteriaList.push({ field: 'group.name',          condition: 'is',           value: group });
+    if (created_after)     criteriaList.push({ field: 'created_time',        condition: 'greater than', value: created_after });
+    if (created_before)    criteriaList.push({ field: 'created_time',        condition: 'less than',    value: created_before });
+    if (due_before)        criteriaList.push({ field: 'due_by_time',         condition: 'less than',    value: due_before });
+    if (status)            criteriaList.push({ field: 'status.name',         condition: 'is',           value: STATUS_MAP[status.toLowerCase()] || status });
+    if (priority)          criteriaList.push({ field: 'priority.name',       condition: 'is',           value: PRIORITY_NAMES[priority.toLowerCase()] || priority });
 
-    // subject, date range — still use search_criteria (single plain object)
-    if (subject_contains) listInfo.search_criteria = { field: 'subject', condition: 'contains', value: subject_contains };
-    else if (created_after)  listInfo.search_criteria = { field: 'created_time', condition: 'greater than', value: created_after };
-    else if (created_before) listInfo.search_criteria = { field: 'created_time', condition: 'less than',    value: created_before };
-    else if (due_before)     listInfo.search_criteria = { field: 'due_by_time',  condition: 'less than',    value: due_before };
+    if (criteriaList.length === 1) {
+      listInfo.search_criteria = criteriaList[0];
+    } else if (criteriaList.length > 1) {
+      listInfo.search_criteria = criteriaList.map((c, i) =>
+        i === 0 ? c : { ...c, logical_operator: 'and' }
+      );
+    }
 
     console.error(`searchRequestsFlat: list_info=${JSON.stringify(listInfo)}`);
     const params = { input_data: JSON.stringify({ list_info: listInfo }) };
