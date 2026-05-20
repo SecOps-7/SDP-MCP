@@ -945,26 +945,35 @@ class SDPAPIClientV2 {
    * @returns {Promise<Object>} The closed request object
    */
   async closeRequest(requestId, closeData) {
-    const { closure_comments, closure_code } = closeData;
+    const { resolution, closure_code, status = 'Closed' } = closeData;
 
-    // SDP API enforces a 250-character limit on closure_comments
+    // closure_comments has a 250-char limit; truncate if needed
     const MAX_CLOSURE_COMMENTS = 250;
-    let safeClosureComments = closure_comments || 'Request closed';
+    let safeClosureComments = resolution || 'Request closed';
     if (safeClosureComments.length > MAX_CLOSURE_COMMENTS) {
       console.error(`Warning: closure_comments truncated from ${safeClosureComments.length} to ${MAX_CLOSURE_COMMENTS} chars`);
       safeClosureComments = safeClosureComments.substring(0, MAX_CLOSURE_COMMENTS - 3) + '...';
     }
 
-    const closure_info = { closure_comments: safeClosureComments };
+    const request = {
+      closure_info: { closure_comments: safeClosureComments },
+      status: { name: status }
+    };
+
     if (closure_code) {
-      closure_info.closure_code = { name: closure_code };
+      request.closure_info.closure_code = { name: closure_code };
+    }
+
+    // Also send as resolution.content so the resolution field is populated
+    if (resolution) {
+      request.resolution = { content: resolution };
     }
 
     const params = {
-      input_data: JSON.stringify({ request: { closure_info } })
+      input_data: JSON.stringify({ request })
     };
 
-    const response = await this.client.post(`/requests/${requestId}/close`, null, { params });
+    const response = await this.client.put(`/requests/${requestId}`, null, { params });
     return response.data.request;
   }
 
