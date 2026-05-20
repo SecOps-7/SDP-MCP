@@ -160,6 +160,7 @@ function handleJsonRpcMessage(message) {
 
       case 'tools/call': {
         const { name, arguments: args } = params || {};
+        console.error(`Tool: ${name}`);
 
         if (!sdpClient) {
           throw new Error('SDP client not initialized. Please check OAuth configuration.');
