@@ -397,7 +397,7 @@ const schemas = [
       type: 'object',
       properties: {
         request_id: { type: 'string', description: 'ID of the request to close' },
-        resolution: { type: 'string', description: 'Resolution summary — plain text only, no HTML tags. Describe what was done to fix the issue.' },
+        resolution: { type: 'string', description: 'Resolution summary (what was done to fix the issue)' },
         closure_code: {
           type: 'string',
           description: 'Closure code',
