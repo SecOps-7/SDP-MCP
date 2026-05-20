@@ -945,7 +945,19 @@ class SDPAPIClientV2 {
    * @returns {Promise<Object>} The closed request object
    */
   async closeRequest(requestId, closeData) {
-    const { resolution, closure_code, status = 'Closed' } = closeData;
+    const { resolution, closure_code } = closeData;
+
+    // PUT /requests/{id} rejects closure_code as a field — use it to
+    // determine the target status instead of sending it directly
+    const STATUS_FROM_CLOSURE = {
+      'Resolved':  'Resolved',
+      'Cancelled': 'Cancelled',
+      'Duplicate': 'Closed',
+      'Closed':    'Closed',
+      'On Hold':   'On Hold',
+      'Open':      'Open'
+    };
+    const statusName = STATUS_FROM_CLOSURE[closure_code] || 'Closed';
 
     // closure_comments has a 250-char limit; truncate if needed
     const MAX_CLOSURE_COMMENTS = 250;
@@ -957,14 +969,9 @@ class SDPAPIClientV2 {
 
     const request = {
       closure_info: { closure_comments: safeClosureComments },
-      status: { name: status }
+      status: { name: statusName }
     };
 
-    if (closure_code) {
-      request.closure_info.closure_code = { name: closure_code };
-    }
-
-    // Also send as resolution.content so the resolution field is populated
     if (resolution) {
       request.resolution = { content: resolution };
     }
