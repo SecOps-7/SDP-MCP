@@ -967,9 +967,12 @@ class SDPAPIClientV2 {
     };
     const statusName = STATUS_FROM_CLOSURE[closure_code] || 'Closed';
 
-    // closure_comments has a 250-char limit; truncate if needed
+    // closure_comments is plain text only — strip HTML tags, then truncate to 250 chars
     const MAX_CLOSURE_COMMENTS = 250;
-    let safeClosureComments = resolution || 'Request closed';
+    let safeClosureComments = (resolution || 'Request closed')
+      .replace(/<[^>]*>/g, '')   // strip tags
+      .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"')
+      .trim();
     if (safeClosureComments.length > MAX_CLOSURE_COMMENTS) {
       console.error(`Warning: closure_comments truncated from ${safeClosureComments.length} to ${MAX_CLOSURE_COMMENTS} chars`);
       safeClosureComments = safeClosureComments.substring(0, MAX_CLOSURE_COMMENTS - 3) + '...';
