@@ -925,8 +925,11 @@ class SDPAPIClientV2 {
    */
   async getRequestConversation(requestId) {
     try {
-      const response = await this.client.get(`/requests/${requestId}/notes`);
-      return response.data.request_notes || [];
+      const params = {
+        input_data: JSON.stringify({ list_info: { row_count: 100, sort_field: 'created_time', sort_order: 'asc' } })
+      };
+      const response = await this.client.get(`/requests/${requestId}/notes`, { params });
+      return response.data.notes || [];
     } catch (error) {
       console.error('Failed to get request conversation:', error.message);
       throw error;
