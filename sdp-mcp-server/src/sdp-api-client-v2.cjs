@@ -1265,8 +1265,8 @@ class SDPAPIClientV2 {
     // { field:A, condition, value, children: [{ field:B, condition, value, logical_operator:"AND" }] }
     // The first criterion is the parent object; all additional criteria go in children[].
     const criteriaList = [];
-    if (technician_email)  criteriaList.push({ field: 'technician.email_id', condition: 'is',           value: technician_email });
-    if (requester_email)   criteriaList.push({ field: 'requester.email_id',  condition: 'is',           value: requester_email });
+    if (technician_email)  criteriaList.push({ field: 'technician.email_id', condition: 'is',           value: technician_email.toLowerCase() });
+    if (requester_email)   criteriaList.push({ field: 'requester.email_id',  condition: 'is',           value: requester_email.toLowerCase() });
     if (subject_contains)  criteriaList.push({ field: 'subject',             condition: 'contains',     value: subject_contains });
     if (category)          criteriaList.push({ field: 'category.name',       condition: 'is',           value: category });
     if (group)             criteriaList.push({ field: 'group.name',          condition: 'is',           value: group });
