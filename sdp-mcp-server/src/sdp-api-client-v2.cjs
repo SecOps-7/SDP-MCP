@@ -1253,17 +1253,6 @@ class SDPAPIClientV2 {
       'in progress': 'In Progress', 'on hold': 'On Hold'
     };
 
-    // Build the list of advanced criteria (non-status/priority filters)
-    const criteriaList = [];
-    if (technician_email)  criteriaList.push({ field: 'technician.email_id', condition: 'is',           value: technician_email });
-    if (requester_email)   criteriaList.push({ field: 'requester.email_id',  condition: 'is',           value: requester_email });
-    if (subject_contains)  criteriaList.push({ field: 'subject',             condition: 'contains',     value: subject_contains });
-    if (category)          criteriaList.push({ field: 'category.name',       condition: 'is',           value: category });
-    if (group)             criteriaList.push({ field: 'group.name',          condition: 'is',           value: group });
-    if (created_after)     criteriaList.push({ field: 'created_time',        condition: 'greater than', value: created_after });
-    if (created_before)    criteriaList.push({ field: 'created_time',        condition: 'less than',    value: created_before });
-    if (due_before)        criteriaList.push({ field: 'due_by_time',         condition: 'less than',    value: due_before });
-
     // Build search_criteria array. logical_operator must be lowercase "and"/"or".
     // First element never has logical_operator; subsequent elements use "and".
     const criteriaList = [];
