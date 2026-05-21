@@ -52,6 +52,11 @@ class SDPAPIClientV2 {
       headers: {
         'Accept': 'application/vnd.manageengine.sdp.v3+json',
         'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      paramsSerializer: {
+        serialize: (params) => Object.entries(params)
+          .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
+          .join('&')
       }
     });
     
@@ -69,6 +74,8 @@ class SDPAPIClientV2 {
         console.error(`API Request: ${config.method.toUpperCase()} ${config.url}`);
         if (config.params?.input_data) {
           console.error('Payload:', JSON.stringify(JSON.parse(config.params.input_data), null, 2));
+          const encodedQS = `input_data=${encodeURIComponent(String(config.params.input_data))}`;
+          console.error(`Full URL: ${config.baseURL}${config.url}?${encodedQS}`);
         }
         return config;
       },
