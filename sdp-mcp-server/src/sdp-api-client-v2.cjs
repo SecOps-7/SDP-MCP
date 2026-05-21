@@ -336,32 +336,19 @@ class SDPAPIClientV2 {
         value: priorityName
       };
     } else if (status && priority) {
-      // Multiple filters - use search_criteria
-      const searchCriteria = [];
-
+      // Multiple filters — use children nested format (flat array causes Tomcat 400)
       const statusMap = {
-        'open': 'Open',
-        'closed': 'Closed',
-        'pending': 'On Hold',
-        'resolved': 'Resolved',
-        'in progress': 'In Progress'
+        'open': 'open', 'closed': 'closed', 'pending': 'on hold',
+        'resolved': 'resolved', 'in progress': 'in progress'
       };
-      const statusName = statusMap[status.toLowerCase()] || status;
-      searchCriteria.push({
+      const statusName = statusMap[status.toLowerCase()] || status.toLowerCase();
+      const priorityName = PRIORITY_NAMES[priority.toLowerCase()] || priority;
+      listInfo.search_criteria = {
         field: 'status.name',
         condition: 'is',
-        value: statusName
-      });
-
-      const priorityName = PRIORITY_NAMES[priority.toLowerCase()] || priority;
-      searchCriteria.push({
-        field: 'priority.name',
-        condition: 'is',
-        value: priorityName,
-        logical_operator: 'AND'
-      });
-
-      listInfo.search_criteria = searchCriteria;
+        value: statusName,
+        children: [{ field: 'priority.name', condition: 'is', value: priorityName, logical_operator: 'AND' }]
+      };
     }
     
     const params = {
@@ -584,15 +571,14 @@ class SDPAPIClientV2 {
     if (technician_id) {
       request.technician = { id: technician_id };
     } else if (technician_email) {
-      // Use technician email directly - the /users endpoint doesn't exist in SDP Cloud API
       console.error(`Using technician email directly: ${technician_email}`);
-      request.technician = { email_id: technician_email };
+      request.technician = { email_id: technician_email.toLowerCase() };
     }
-    
+
     const params = {
       input_data: JSON.stringify({ request })
     };
-    
+
     try {
       const response = await this.client.post('/requests', null, { params });
       return response.data.request;
@@ -790,9 +776,8 @@ class SDPAPIClientV2 {
     if (updates.technician_id) {
       request.technician = { id: updates.technician_id };
     } else if (updates.technician_email) {
-      // Use technician email directly - the /users endpoint doesn't exist in SDP Cloud API
       console.error(`Using technician email directly: ${updates.technician_email}`);
-      request.technician = { email_id: updates.technician_email };
+      request.technician = { email_id: updates.technician_email.toLowerCase() };
     }
     
     const params = {
@@ -939,7 +924,7 @@ class SDPAPIClientV2 {
   async getRequestConversation(requestId) {
     try {
       const params = {
-        input_data: JSON.stringify({ list_info: { row_count: 100, sort_field: 'created_time', sort_order: 'asc' } })
+        input_data: JSON.stringify({ list_info: { row_count: '100', sort_field: 'created_time', sort_order: 'asc' } })
       };
       const response = await this.client.get(`/requests/${requestId}/notes`, { params });
       return response.data.notes || [];
@@ -1139,8 +1124,8 @@ class SDPAPIClientV2 {
     // Use search_criteria for searching (object format, not array)
     // Service Desk Plus requires object format for single criteria
     const listInfo = {
-      row_count: rowCount,
-      start_index: offset,
+      row_count: String(rowCount),
+      start_index: String(offset + 1),
       sort_field: sortBy,
       sort_order: sortOrder,
       get_total_count: getTotalCount,
@@ -1150,6 +1135,7 @@ class SDPAPIClientV2 {
         value: query
       }
     };
+
     
     const params = {
       input_data: JSON.stringify({ list_info: listInfo })
@@ -1186,32 +1172,27 @@ class SDPAPIClientV2 {
 
     const rowCount = Math.min(limit, 100);
 
-    // Normalise criteria to match API expectations:
-    // - Single-element array → unwrap to plain object (API expects object for single criteria)
-    // - Multi-element array → strip logical_operator from the first element (first item must
-    //   not have logical_operator; including it causes the API to reject the query)
+    // Normalise criteria — single object passed directly; array uses children nested format.
+    // Flat array format causes Tomcat 400 on this instance.
     let normalisedCriteria;
     if (Array.isArray(criteria)) {
       if (criteria.length === 1) {
         const { logical_operator, ...rest } = criteria[0];
         normalisedCriteria = rest;
       } else {
-        normalisedCriteria = criteria.map((c, i) => {
-          if (i === 0) {
-            const { logical_operator, ...rest } = c;
-            return rest;
-          }
-          // logical_operator must be lowercase on this instance
-          return { ...c, logical_operator: (c.logical_operator || 'and').toLowerCase() };
-        });
+        const [first, ...rest] = criteria;
+        normalisedCriteria = {
+          ...first,
+          children: rest.map(c => ({ ...c, logical_operator: 'AND' }))
+        };
       }
     } else {
       normalisedCriteria = criteria;
     }
 
     const listInfo = {
-      row_count: rowCount,
-      start_index: (page - 1) * rowCount,
+      row_count: String(rowCount),
+      start_index: String((page - 1) * rowCount + 1),
       sort_field: sortBy,
       sort_order: sortOrder,
       get_total_count: getTotalCount,
@@ -1417,7 +1398,7 @@ class SDPAPIClientV2 {
     const criteria = {
       field: 'requester.email_id',
       condition: 'is',
-      value: requesterEmail
+      value: requesterEmail.toLowerCase()
     };
     
     return await this.advancedSearchRequests(criteria, options);
@@ -1434,7 +1415,7 @@ class SDPAPIClientV2 {
     const criteria = {
       field: 'technician.email_id',
       condition: 'is',
-      value: technicianEmail
+      value: technicianEmail.toLowerCase()
     };
     
     return await this.advancedSearchRequests(criteria, options);
