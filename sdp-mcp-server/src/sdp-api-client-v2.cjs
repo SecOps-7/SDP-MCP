@@ -50,7 +50,8 @@ class SDPAPIClientV2 {
       baseURL,
       timeout: 30000,
       headers: {
-        'Accept': 'application/vnd.manageengine.sdp.v3+json'
+        'Accept': 'application/vnd.manageengine.sdp.v3+json',
+        'Content-Type': 'application/x-www-form-urlencoded'
       }
     });
     
