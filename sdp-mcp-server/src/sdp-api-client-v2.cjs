@@ -1240,8 +1240,8 @@ class SDPAPIClientV2 {
 
     const rowCount = Math.min(limit, 100);
     const listInfo = {
-      row_count: rowCount,
-      start_index: (page - 1) * rowCount,
+      row_count: String(rowCount),
+      start_index: String((page - 1) * rowCount + 1),
       sort_field: sortBy,
       sort_order: sortOrder,
       get_total_count: true
@@ -1253,8 +1253,9 @@ class SDPAPIClientV2 {
       'in progress': 'In Progress', 'on hold': 'On Hold'
     };
 
-    // Build search_criteria array. logical_operator must be lowercase "and"/"or".
-    // First element never has logical_operator; subsequent elements use "and".
+    // Build search_criteria using nested children format:
+    // { field:A, condition, value, children: [{ field:B, condition, value, logical_operator:"AND" }] }
+    // The first criterion is the parent object; all additional criteria go in children[].
     const criteriaList = [];
     if (technician_email)  criteriaList.push({ field: 'technician.email_id', condition: 'is',           value: technician_email });
     if (requester_email)   criteriaList.push({ field: 'requester.email_id',  condition: 'is',           value: requester_email });
@@ -1270,9 +1271,11 @@ class SDPAPIClientV2 {
     if (criteriaList.length === 1) {
       listInfo.search_criteria = criteriaList[0];
     } else if (criteriaList.length > 1) {
-      listInfo.search_criteria = criteriaList.map((c, i) =>
-        i === 0 ? c : { ...c, logical_operator: 'and' }
-      );
+      const [first, ...rest] = criteriaList;
+      listInfo.search_criteria = {
+        ...first,
+        children: rest.map(c => ({ ...c, logical_operator: 'AND' }))
+      };
     }
 
     console.error(`searchRequestsFlat: list_info=${JSON.stringify(listInfo)}`);
