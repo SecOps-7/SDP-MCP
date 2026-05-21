@@ -1248,9 +1248,9 @@ class SDPAPIClientV2 {
     };
 
     const STATUS_MAP = {
-      'open': 'Open', 'closed': 'Closed', 'pending': 'On Hold',
-      'resolved': 'Resolved', 'cancelled': 'Cancelled',
-      'in progress': 'In Progress', 'on hold': 'On Hold'
+      'open': 'open', 'closed': 'closed', 'pending': 'on hold',
+      'resolved': 'resolved', 'cancelled': 'cancelled',
+      'in progress': 'in progress', 'on hold': 'on hold'
     };
 
     // Build search_criteria using nested children format:
