@@ -96,40 +96,11 @@ app.get('/sse', (req, res) => {
 
   res.write(`data: ${JSON.stringify({ type: 'connection', sessionId })}\n\n`);
 
-  // Proactive close: 60s before Azure Easy Auth token expiry so the client
-  // reconnects (and gets a fresh token) before the session goes stale.
-  // Falls back to 55 minutes when not behind Easy Auth.
-  let timeUntilClose = 55 * 60 * 1000;
-  try {
-    const principal = req.headers['x-ms-client-principal'];
-    if (principal) {
-      const claims = JSON.parse(Buffer.from(principal, 'base64').toString('utf8'));
-      const appId   = claims.claims?.find(c => c.typ === 'appid' || c.typ === 'azp')?.val;
-      const name    = claims.claims?.find(c => c.typ === 'name' || c.typ === 'preferred_username')?.val;
-      console.error(`Session ${sessionId}: APPID=${appId || '(unknown)'} NAME=${name || '(unknown)'}`);
-      const expClaim = claims.claims?.find(c => c.typ === 'exp');
-      if (expClaim) {
-        const expMs = parseInt(expClaim.val) * 1000;
-        timeUntilClose = Math.max(expMs - Date.now() - 60000, 0);
-        console.error(`Session ${sessionId}: Easy Auth token expires in ${Math.round(timeUntilClose / 1000)}s — will close early`);
-      }
-    }
-  } catch (e) { /* header absent or malformed — use fallback */ }
-
   const keepAlive = setInterval(() => { res.write(':keepalive\n\n'); }, 30000);
-
-  const reconnectTimer = setTimeout(() => {
-    console.error(`Session ${sessionId}: proactive close for token refresh`);
-    res.write('retry: 0\n\n');
-    clearInterval(keepAlive);
-    connections.delete(sessionId);
-    res.end();
-  }, timeUntilClose);
 
   req.on('close', () => {
     console.error(`Session closed: ${sessionId}`);
     clearInterval(keepAlive);
-    clearTimeout(reconnectTimer);
     connections.delete(sessionId);
   });
 });
