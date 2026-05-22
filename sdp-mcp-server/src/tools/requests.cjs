@@ -55,7 +55,7 @@ function makeImplementations(sdpClient) {
       if (/^\d{1,10}$/.test(internalId)) {
         console.error(`Treating ${request_id} as display_id — resolving to internal ID`);
         const result = await sdpClient.advancedSearchRequests(
-          [{ field: 'display_id', condition: 'is', value: internalId }],
+          [{ field: 'display_id', condition: 'is', value: parseInt(internalId, 10) }],
           { limit: 1 }
         );
         if (!result.requests || result.requests.length === 0) {
