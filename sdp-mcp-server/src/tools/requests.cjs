@@ -162,11 +162,11 @@ function makeImplementations(sdpClient) {
     },
 
     async update_status(params) {
-      const { request_id, status } = params;
+      const { request_id, status, status_change_comments } = params;
       validateRequestId(request_id);
       if (!status) throw new Error('status is required');
       console.error(`Updating status of request ${request_id} to "${status}"`);
-      const req = await sdpClient.updateStatus(request_id, status);
+      const req = await sdpClient.updateStatus(request_id, status, status_change_comments);
       return {
         content: [{ type: 'text', text: JSON.stringify({
           success: true, request_id: req?.id, status: req?.status?.name,
@@ -323,7 +323,7 @@ const schemas = [
       properties: {
         limit: { type: 'number', description: 'Maximum number of requests to return (max 100)', default: 10, maximum: 100 },
         status: { type: 'string', description: 'Filter by status', enum: ['open', 'closed', 'pending', 'resolved', 'cancelled'] },
-        priority: { type: 'string', description: 'Filter by priority', enum: ['low', 'medium', 'high', 'urgent'] },
+        priority: { type: 'string', description: 'Filter by priority name as configured in the instance (e.g. "High", "Medium", "Low")' },
         sort_by: { type: 'string', enum: ['created_time', 'due_by_time', 'subject', 'priority'], default: 'created_time' },
         sort_order: { type: 'string', enum: ['asc', 'desc'], default: 'desc' }
       }
@@ -348,7 +348,7 @@ const schemas = [
       properties: {
         subject: { type: 'string', description: 'Subject of the request (max 250 chars)' },
         description: { type: 'string', description: 'Detailed description (HTML supported)' },
-        priority: { type: 'string', enum: ['low', 'medium', 'high', 'urgent'], default: 'medium' },
+        priority: { type: 'string', description: 'Priority name as configured in the instance (e.g. "High", "Medium", "Low")', default: 'medium' },
         category: { type: 'string', description: 'Category name' },
         subcategory: { type: 'string', description: 'Subcategory name' },
         requester_email: { type: 'string', description: 'Email of the requester' },
@@ -380,7 +380,7 @@ const schemas = [
         subject: { type: 'string', description: 'New subject (max 250 chars)' },
         description: { type: 'string', description: 'New description' },
         status: { type: 'string', enum: ['open', 'pending', 'resolved', 'closed', 'in progress', 'on hold'] },
-        priority: { type: 'string', enum: ['low', 'medium', 'high', 'urgent'] },
+        priority: { type: 'string', description: 'Priority name as configured in the instance (e.g. "High", "Medium", "Low")' },
         category: { type: 'string', description: 'New category' },
         subcategory: { type: 'string', description: 'New subcategory' },
         technician_id: { type: 'string', description: 'ID of technician to assign' },
@@ -437,7 +437,8 @@ const schemas = [
       type: 'object',
       properties: {
         request_id: { type: 'string', description: 'ID of the request' },
-        status: { type: 'string', enum: ['Open', 'On Hold', 'In Progress', 'Resolved', 'Closed', 'Cancelled'] }
+        status: { type: 'string', enum: ['Open', 'On Hold', 'In Progress', 'Resolved', 'Closed', 'Cancelled'] },
+        status_change_comments: { type: 'string', description: 'Reason or comment for the status change. Required by SDP when setting status to "On Hold".' }
       },
       required: ['request_id', 'status']
     }
@@ -531,7 +532,7 @@ const schemas = [
         created_before:   { type: 'number', description: 'Return requests created before this Unix epoch millisecond timestamp' },
         due_before:       { type: 'number', description: 'Return requests due before this Unix epoch millisecond timestamp' },
         status:   { type: 'string', description: 'Filter by status',   enum: ['open', 'closed', 'pending', 'resolved', 'cancelled', 'in progress', 'on hold'] },
-        priority: { type: 'string', description: 'Filter by priority', enum: ['low', 'medium', 'high', 'urgent'] },
+        priority: { type: 'string', description: 'Filter by priority name as configured in the instance (e.g. "High", "Medium", "Low")' },
         limit:      { type: 'number', description: 'Maximum results (max 100)', default: 10, maximum: 100 },
         page:       { type: 'number', description: 'Page number (1-based)', default: 1 },
         sort_by:    { type: 'string', enum: ['created_time', 'due_by_time', 'subject', 'priority'], default: 'created_time' },

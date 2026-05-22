@@ -21,27 +21,27 @@ class SDPUsersAPI {
     const rowCount = Math.min(limit, 100);
     
     const listInfo = {
-      row_count: rowCount,
-      start_index: offset,
+      row_count: String(rowCount),
+      start_index: String(offset + 1),
       sort_field: 'name',
       sort_order: 'asc',
       get_total_count: true
     };
-    
+
     // Add search using search_criteria if provided
     // IMPORTANT: Cannot use both search_criteria and filter_by - causes 400 error
     if (searchTerm) {
-      listInfo.search_criteria = [{
+      listInfo.search_criteria = {
         field: 'name',
         condition: 'contains',
         value: searchTerm
-      }];
+      };
     }
-    
+
     const params = {
       input_data: JSON.stringify({ list_info: listInfo })
     };
-    
+
     try {
       // Only try /users endpoint - /technicians doesn't exist in SDP Cloud
       const response = await this.client.get('/users', { params });
@@ -92,27 +92,27 @@ class SDPUsersAPI {
     const rowCount = Math.min(limit, 100);
     
     const listInfo = {
-      row_count: rowCount,
-      start_index: offset,
+      row_count: String(rowCount),
+      start_index: String(offset + 1),
       sort_field: 'name',
       sort_order: 'asc',
       get_total_count: true
     };
-    
+
     // Add search using search_criteria if provided
     // IMPORTANT: Cannot use both search_criteria and filter_by - causes 400 error
     if (searchTerm) {
-      listInfo.search_criteria = [{
+      listInfo.search_criteria = {
         field: 'name',
         condition: 'contains',
         value: searchTerm
-      }];
+      };
     }
-    
+
     const params = {
       input_data: JSON.stringify({ list_info: listInfo })
     };
-    
+
     const response = await this.client.get('/users', { params });
     
     // Filter results after getting them if needed

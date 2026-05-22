@@ -407,9 +407,9 @@ class SDPAPIClientV2 {
    */
   async createRequest(requestData) {
     const { 
-      subject, 
-      description, 
-      priority = 'medium', 
+      subject,
+      description,
+      priority,
       category, 
       subcategory, 
       requester, 
@@ -453,125 +453,58 @@ class SDPAPIClientV2 {
     
     await this.ensureMetadata();
     
-    const request = {
-      subject,
-      description: description || '',
-      // All required fields based on API error
-      mode: mode ? { name: mode } : { name: 'Web Form' },
-      request_type: request_type ? { name: request_type } : { name: 'Incident' },
-      urgency: urgency ? { name: urgency } : { name: '2 - General Concern' },  // Valid urgency
-      level: level ? { name: level } : { name: '1 - Frontline' },  // Valid level
-      impact: impact ? { name: impact } : { name: '1 - Affects User' },
-      category: category ? { name: category } : { name: 'Software' },  // Default category
-      status: { name: 'Open' }
-    };
-    
-    // Add optional fields
-    if (impact_details) {
-      request.impact_details = impact_details;
-    }
-    
-    if (email_ids_to_notify && Array.isArray(email_ids_to_notify)) {
-      request.email_ids_to_notify = email_ids_to_notify;
-    }
-    
-    if (due_by_time) {
-      request.due_by_time = due_by_time;
-    }
-    
-    if (first_response_due_by_time) {
-      request.first_response_due_by_time = first_response_due_by_time;
-    }
-    
-    if (assets && Array.isArray(assets)) {
-      request.assets = assets;
-    }
-    
-    if (configuration_items && Array.isArray(configuration_items)) {
-      request.configuration_items = configuration_items;
-    }
-    
-    if (udf_fields && typeof udf_fields === 'object') {
-      request.udf_fields = udf_fields;
-    }
-    
-    if (template) {
-      request.template = typeof template === 'string' ? { name: template } : template;
-    }
-    
-    if (site) {
-      request.site = typeof site === 'string' ? { name: site } : site;
-    }
-    
-    if (group) {
-      request.group = typeof group === 'string' ? { name: group } : group;
-    }
-    
-    if (service_category) {
-      request.service_category = typeof service_category === 'string' ? { name: service_category } : service_category;
-    }
-    
-    if (service_approvers) {
-      request.service_approvers = service_approvers;
-    }
-    
-    if (resources) {
-      request.resources = resources;
-    }
-    
+    // Only include fields that were explicitly provided — let SDP apply its own
+    // template defaults rather than injecting values that may be wrong for this instance.
+    const request = { subject };
+
+    if (description)              request.description   = description;
+    if (mode)                     request.mode          = { name: mode };
+    if (request_type)             request.request_type  = { name: request_type };
+    if (urgency)                  request.urgency       = { name: urgency };
+    if (level)                    request.level         = { name: level };
+    if (impact)                   request.impact        = { name: impact };
+    if (impact_details)           request.impact_details = impact_details;
+    if (due_by_time)              request.due_by_time   = due_by_time;
+    if (first_response_due_by_time) request.first_response_due_by_time = first_response_due_by_time;
+    if (assets?.length)           request.assets        = assets;
+    if (configuration_items?.length) request.configuration_items = configuration_items;
+    if (udf_fields)               request.udf_fields    = udf_fields;
+    if (template)                 request.template      = typeof template === 'string' ? { name: template } : template;
+    if (site)                     request.site          = typeof site === 'string' ? { name: site } : site;
+    if (group)                    request.group         = typeof group === 'string' ? { name: group } : group;
+    if (service_category)         request.service_category = typeof service_category === 'string' ? { name: service_category } : service_category;
+    if (service_approvers)        request.service_approvers = service_approvers;
+    if (resources)                request.resources     = resources;
+    if (email_ids_to_notify?.length) request.email_ids_to_notify = email_ids_to_notify;
+
     if (priority) {
       request.priority = { name: PRIORITY_NAMES[priority.toLowerCase()] || priority };
     }
-    
-    // Use category ID
+
     if (category) {
-      // Handle both object and string formats
       if (typeof category === 'object' && category.id) {
         request.category = category;
-      } else if (typeof category === 'string') {
+      } else {
         const categoryId = this.metadata.getCategoryId(category);
-        // Only set if we got a valid ID, not the same string back
-        if (categoryId && categoryId !== category) {
-          request.category = { id: categoryId };
-        } else {
-          console.error(`Warning: Could not find category ID for "${category}"`);
-          // Use name format as fallback
-          request.category = { name: category };
-        }
+        request.category = (categoryId && categoryId !== category) ? { id: categoryId } : { name: category };
       }
     }
-    
-    // Add subcategory - this is often required
+
     if (subcategory) {
-      // Handle both object and string formats
-      if (typeof subcategory === 'object' && subcategory.id) {
-        request.subcategory = subcategory;
-      } else if (typeof subcategory === 'string') {
-        // Map common subcategory names to valid ones
-        const subcategoryMap = {
-          'printer': 'Printer/Scanner',
-          'printers': 'Printer/Scanner',
-          'scanner': 'Printer/Scanner',
-          'scanners': 'Printer/Scanner'
-        };
-        const mappedSubcategory = subcategoryMap[subcategory.toLowerCase()] || subcategory;
-        request.subcategory = { name: mappedSubcategory };
-      }
+      request.subcategory = typeof subcategory === 'object' ? subcategory : { name: subcategory };
     }
-    
+
     if (requester_email) {
-      request.requester = { email_id: requester_email };
+      request.requester = { email_id: requester_email.toLowerCase() };
     } else if (requester_name) {
       request.requester = { name: requester_name };
     } else if (requester) {
       request.requester = typeof requester === 'string' ? { name: requester } : requester;
     }
-    
-    // Add technician assignment if provided
+
     if (technician_id) {
       request.technician = { id: technician_id };
     } else if (technician_email) {
-      console.error(`Using technician email directly: ${technician_email}`);
       request.technician = { email_id: technician_email.toLowerCase() };
     }
 
@@ -1000,14 +933,10 @@ class SDPAPIClientV2 {
     return response.data.request;
   }
 
-  async updateStatus(requestId, statusName) {
-    const params = {
-      input_data: JSON.stringify({
-        request: {
-          status: { name: statusName }
-        }
-      })
-    };
+  async updateStatus(requestId, statusName, comments) {
+    const request = { status: { name: statusName } };
+    if (comments) request.status_change_comments = comments;
+    const params = { input_data: JSON.stringify({ request }) };
     const response = await this.client.put(`/requests/${requestId}`, null, { params });
     return response.data.request;
   }

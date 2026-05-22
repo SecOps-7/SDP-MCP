@@ -26,7 +26,13 @@ class SDPMetadataClient {
       baseURL,
       timeout: 30000,
       headers: {
-        'Accept': 'application/vnd.manageengine.sdp.v3+json'
+        'Accept': 'application/vnd.manageengine.sdp.v3+json',
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      paramsSerializer: {
+        serialize: (params) => Object.entries(params)
+          .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
+          .join('&')
       }
     });
     
