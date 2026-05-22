@@ -686,11 +686,20 @@ class SDPAPIClientV2 {
       }
     }
     
+    if (updates.status_change_comments) {
+      const resolvedStatus = request.status?.name?.toLowerCase();
+      if (resolvedStatus === 'on hold') {
+        request.onhold_scheduler = { comments: updates.status_change_comments };
+      } else {
+        request.status_change_comments = updates.status_change_comments;
+      }
+    }
+
     if (updates.priority) {
       const priorityName = PRIORITY_NAMES[updates.priority.toLowerCase()] || updates.priority;
       request.priority = { name: priorityName };
     }
-    
+
     if (updates.category) {
       const categoryId = this.metadata.getCategoryId(updates.category);
       if (categoryId && categoryId !== updates.category) {
@@ -935,7 +944,14 @@ class SDPAPIClientV2 {
 
   async updateStatus(requestId, statusName, comments) {
     const request = { status: { name: statusName } };
-    if (comments) request.status_change_comments = comments;
+    if (comments) {
+      // On Hold uses onhold_scheduler.comments; other status changes use status_change_comments
+      if (statusName.toLowerCase() === 'on hold') {
+        request.onhold_scheduler = { comments };
+      } else {
+        request.status_change_comments = comments;
+      }
+    }
     const params = { input_data: JSON.stringify({ request }) };
     const response = await this.client.put(`/requests/${requestId}`, null, { params });
     return response.data.request;

@@ -55,7 +55,7 @@ function makeImplementations(sdpClient) {
       if (/^\d{1,10}$/.test(internalId)) {
         console.error(`Treating ${request_id} as display_id — resolving to internal ID`);
         const result = await sdpClient.advancedSearchRequests(
-          [{ field: 'display_id', condition: 'is', value: parseInt(internalId, 10) }],
+          [{ field: 'display_id', condition: 'is', value: internalId }],
           { limit: 1 }
         );
         if (!result.requests || result.requests.length === 0) {
@@ -376,7 +376,7 @@ const schemas = [
     inputSchema: {
       type: 'object',
       properties: {
-        request_id: { type: 'string', description: 'ID of the request to update' },
+        request_id: { type: 'string', description: 'Full internal request ID (e.g. "97837000038081358") — NOT the short display ID (e.g. "29257"). Obtain from get_request or list_requests results.' },
         subject: { type: 'string', description: 'New subject (max 250 chars)' },
         description: { type: 'string', description: 'New description' },
         status: { type: 'string', enum: ['open', 'pending', 'resolved', 'closed', 'in progress', 'on hold'] },
@@ -395,7 +395,8 @@ const schemas = [
         group: { type: 'string', description: 'New group name' },
         site: { type: 'string', description: 'New site name' },
         scheduled_start_time: { type: 'object', description: 'Scheduled start time as { value: <epoch_ms> }' },
-        scheduled_end_time: { type: 'object', description: 'Scheduled end time as { value: <epoch_ms> }' }
+        scheduled_end_time: { type: 'object', description: 'Scheduled end time as { value: <epoch_ms> }' },
+        status_change_comments: { type: 'string', description: 'Reason or comment for the status change. Required by SDP when setting status to "On Hold" or "Cancelled".' }
       },
       required: ['request_id']
     }
@@ -406,7 +407,7 @@ const schemas = [
     inputSchema: {
       type: 'object',
       properties: {
-        request_id: { type: 'string', description: 'ID of the request to close' },
+        request_id: { type: 'string', description: 'Full internal request ID (e.g. "97837000038081358") — NOT the short display ID (e.g. "29257"). Obtain from get_request or list_requests results.' },
         resolution: { type: 'string', description: 'Resolution summary (what was done to fix the issue)' },
         closure_code: {
           type: 'string',
@@ -424,7 +425,7 @@ const schemas = [
     inputSchema: {
       type: 'object',
       properties: {
-        request_id: { type: 'string', description: 'ID of the request' },
+        request_id: { type: 'string', description: 'Full internal request ID (e.g. "97837000038081358") — NOT the short display ID (e.g. "29257"). Obtain from get_request or list_requests results.' },
         resolution: { type: 'string', description: 'Resolution text to record on the request' }
       },
       required: ['request_id', 'resolution']
@@ -436,9 +437,9 @@ const schemas = [
     inputSchema: {
       type: 'object',
       properties: {
-        request_id: { type: 'string', description: 'ID of the request' },
+        request_id: { type: 'string', description: 'Full internal request ID (e.g. "97837000038081358") — NOT the short display ID (e.g. "29257"). Obtain from get_request or list_requests results.' },
         status: { type: 'string', enum: ['Open', 'On Hold', 'In Progress', 'Resolved', 'Closed', 'Cancelled'] },
-        status_change_comments: { type: 'string', description: 'Reason or comment for the status change. Required by SDP when setting status to "On Hold".' }
+        status_change_comments: { type: 'string', description: 'Reason or comment for the status change. Required by SDP when setting status to "On Hold" or "Cancelled".' }
       },
       required: ['request_id', 'status']
     }
@@ -449,7 +450,7 @@ const schemas = [
     inputSchema: {
       type: 'object',
       properties: {
-        request_id: { type: 'string', description: 'ID of the request' },
+        request_id: { type: 'string', description: 'Full internal request ID (e.g. "97837000038081358") — NOT the short display ID (e.g. "29257"). Obtain from get_request or list_requests results.' },
         note_content: { type: 'string', description: 'Content of the note' },
         is_public: { type: 'boolean', description: 'Visible to requester', default: true }
       },
@@ -462,7 +463,7 @@ const schemas = [
     inputSchema: {
       type: 'object',
       properties: {
-        request_id: { type: 'string', description: 'ID of the request' },
+        request_id: { type: 'string', description: 'Full internal request ID (e.g. "97837000038081358") — NOT the short display ID (e.g. "29257"). Obtain from get_request or list_requests results.' },
         note_content: { type: 'string', description: 'Content of the private note' },
         notify_technician: { type: 'boolean', description: 'Whether to notify the assigned technician', default: true }
       },
@@ -475,7 +476,7 @@ const schemas = [
     inputSchema: {
       type: 'object',
       properties: {
-        request_id: { type: 'string', description: 'ID of the request' },
+        request_id: { type: 'string', description: 'Full internal request ID (e.g. "97837000038081358") — NOT the short display ID (e.g. "29257"). Obtain from get_request or list_requests results.' },
         reply_message: { type: 'string', description: 'The reply message to send to the requester' },
         mark_first_response: { type: 'boolean', description: 'Mark as first response for SLA tracking', default: false }
       },
@@ -488,7 +489,7 @@ const schemas = [
     inputSchema: {
       type: 'object',
       properties: {
-        request_id: { type: 'string', description: 'ID of the request' },
+        request_id: { type: 'string', description: 'Full internal request ID (e.g. "97837000038081358") — NOT the short display ID (e.g. "29257"). Obtain from get_request or list_requests results.' },
         response_message: { type: 'string', description: 'The first response message content' }
       },
       required: ['request_id', 'response_message']
@@ -500,7 +501,7 @@ const schemas = [
     inputSchema: {
       type: 'object',
       properties: {
-        request_id: { type: 'string', description: 'ID of the request' }
+        request_id: { type: 'string', description: 'Full internal request ID (e.g. "97837000038081358") — NOT the short display ID (e.g. "29257"). Obtain from get_request or list_requests results.' }
       },
       required: ['request_id']
     }
@@ -547,7 +548,7 @@ const schemas = [
     inputSchema: {
       type: 'object',
       properties: {
-        request_id: { type: 'string', description: 'ID of the request to permanently delete' }
+        request_id: { type: 'string', description: 'Full internal request ID (e.g. "97837000038081358") — NOT the short display ID (e.g. "29257"). Obtain from get_request or list_requests results.' }
       },
       required: ['request_id']
     }
@@ -558,7 +559,7 @@ const schemas = [
     inputSchema: {
       type: 'object',
       properties: {
-        request_id: { type: 'string', description: 'ID of the request' },
+        request_id: { type: 'string', description: 'Full internal request ID (e.g. "97837000038081358") — NOT the short display ID (e.g. "29257"). Obtain from get_request or list_requests results.' },
         file_path: { type: 'string', description: 'Absolute path to the file on the server' },
         file_name: { type: 'string', description: 'Display name for the attachment (defaults to filename from file_path)' }
       },

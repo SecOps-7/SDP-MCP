@@ -8,17 +8,27 @@ const SDP_RESOURCES = {
     mimeType: 'text/plain',
     text: `CRITICAL API RULES — apply to every tool call without exception
 
+REQUEST ID — CRITICAL:
+- ALWAYS use the full internal ID (e.g. 97837000038081358) — never the short display ID (e.g. 29257)
+- The display ID is the short number shown in the SDP portal — it is NOT the request_id field
+- Obtain the internal ID from get_request or list_requests before calling any mutating tool
+- If you only have a display ID, call get_request first (it resolves display IDs automatically)
+
+FIELD FORMATS:
 - All reference fields must be objects, never plain strings.
   Correct: { "name": "Hardware" }  Wrong: "Hardware"
 - Resolution field format: { "content": "your text here" }
 - Closure code format: { "name": "Resolved" } (not a plain string)
 - Authorization header: Zoho-oauthtoken <token> — NOT Bearer
 - input_data is sent as a URL query parameter on all methods
-- start_index is 0-based for pagination
+- start_index is 1-based for pagination
 - row_count maximum is 100 per request
 - Subject field: 250 character maximum
 - impact_details field: 250 character maximum
-- You cannot update a closed request — always check status first with get_request`
+- You cannot update a closed request — always check status first with get_request
+
+STATUS CHANGE COMMENTS:
+- Setting status to "On Hold" or "Cancelled" requires status_change_comments — always include it`
   },
 
   'sdp://usage/field-formats': {
@@ -28,8 +38,14 @@ const SDP_RESOURCES = {
     mimeType: 'text/plain',
     text: `FIELD FORMAT REFERENCE
 
+REQUEST ID
+- Full internal ID: 97837000038081358  ← use this in all request_id fields
+- Short display ID: 29257              ← shown in portal, NEVER pass as request_id
+- If you only have a display ID, call get_request first to resolve it
+
 Field        | Correct format
 -------------|------------------------------------------------
+request_id   | "97837000038081358"  (17-digit internal ID)
 Category     | { "name": "Software / Platform" }
 Subcategory  | { "name": "MS Office" }
 Site         | { "name": "Berlin" }
@@ -45,7 +61,10 @@ Medium   → "z - Medium"
 High     → "3 - High"
 Critical → "4 - Critical"
 
-AVAILABLE CLOSURE CODES: Resolved, Cancelled, Duplicate, Closed, On Hold, Open`
+AVAILABLE CLOSURE CODES: Resolved, Cancelled, Duplicate, Closed, On Hold, Open
+
+STATUS CHANGE COMMENTS
+- "On Hold" and "Cancelled" statuses require status_change_comments in the same call`
   },
 
   'sdp://usage/tool-reference': {
@@ -56,8 +75,9 @@ AVAILABLE CLOSURE CODES: Resolved, Cancelled, Duplicate, Closed, On Hold, Open`
     text: `SDP TOOL REFERENCE
 
 get_request — Retrieve full details of a single request by ID.
-  Required: request_id
-  Use: Before any action sequence. Never assume a request is open.
+  Required: request_id (full internal ID preferred; display IDs are resolved automatically)
+  Use: Before any action sequence. Always use the returned .id value as request_id in subsequent calls.
+  IMPORTANT: The id field in the response is the internal ID to use — not display_id.
 
 list_requests — List requests with optional filters and pagination.
   Params: status, technician_email, row_count (max 100), start_index, sort_by, sort_order
@@ -73,8 +93,9 @@ create_request — Create a new service desk request.
   Optional: description, requester_email, category, subcategory, site, technician, priority
 
 update_request — Update fields on an existing open request.
-  Required: request_id
+  Required: request_id (full internal ID — NOT the display ID)
   Updatable: category, subcategory, site, technician, status, priority, group, urgency, impact, level
+  Note: status "On Hold" or "Cancelled" also requires status_change_comments
 
 close_request — Close a request with resolution and closure code.
   Required: request_id, resolution { "content": "..." }, closure_code { "name": "Resolved" }
