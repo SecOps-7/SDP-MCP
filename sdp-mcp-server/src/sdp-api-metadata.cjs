@@ -202,11 +202,21 @@ class SDPMetadataClient {
       this.getCategories(),
       this.getTemplates()
     ]);
-    
+
+    // Fetch subcategories for all categories in parallel
+    const subcategoryResults = await Promise.all(
+      categories.map(c => this.getSubcategories(c.id).catch(() => []))
+    );
+
     return {
       priorities: priorities.map(p => ({ id: p.id, name: p.name, color: p.color })),
       statuses: statuses.map(s => ({ id: s.id, name: s.name, color: s.color })),
-      categories: categories.map(c => ({ id: c.id, name: c.name, description: c.description })),
+      categories: categories.map((c, i) => ({
+        id: c.id,
+        name: c.name,
+        description: c.description,
+        subcategories: subcategoryResults[i].map(sc => ({ id: sc.id, name: sc.name }))
+      })),
       templates: templates.map(t => ({ id: t.id, name: t.name, description: t.description })),
       mappings: {
         priority: this.cache.priorityMap,
