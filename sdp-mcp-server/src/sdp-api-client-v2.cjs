@@ -71,7 +71,8 @@ class SDPAPIClientV2 {
           // Mock API doesn't need auth
           config.headers['Authorization'] = 'Zoho-oauthtoken MOCK_TOKEN';
         }
-        console.error(`API Request: ${config.method.toUpperCase()} ${config.url}`);
+        const tokenPreview = config.headers['Authorization']?.replace('Zoho-oauthtoken ', '').slice(0, 6) + '...' + config.headers['Authorization']?.slice(-4);
+        console.error(`API Request: ${config.method.toUpperCase()} ${config.url} | token: ${tokenPreview}`);
         if (config.params?.input_data) {
           console.error('Payload:', JSON.stringify(JSON.parse(config.params.input_data), null, 2));
           const encodedQS = `input_data=${encodeURIComponent(String(config.params.input_data))}`;

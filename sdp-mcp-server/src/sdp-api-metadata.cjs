@@ -41,9 +41,20 @@ class SDPMetadataClient {
       async (config) => {
         const token = await this.oauth.getAccessToken();
         config.headers['Authorization'] = `Zoho-oauthtoken ${token}`;
+        const preview = token ? `${token.slice(0, 6)}...${token.slice(-4)}` : 'none';
+        console.error(`[metadata] ${config.method?.toUpperCase()} ${config.url} | token: ${preview}`);
         return config;
       },
       (error) => Promise.reject(error)
+    );
+
+    // Log full error responses for debugging
+    this.client.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        console.error(`[metadata] ERROR ${error.response?.status} on ${error.config?.url}:`, JSON.stringify(error.response?.data));
+        return Promise.reject(error);
+      }
     );
     
     // Cache for metadata
