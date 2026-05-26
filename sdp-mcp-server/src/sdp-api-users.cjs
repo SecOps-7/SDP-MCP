@@ -16,10 +16,9 @@ class SDPUsersAPI {
    */
   async listTechnicians(options = {}) {
     const { limit = 25, offset = 0, searchTerm } = options;
-    
-    // Enforce API maximum of 100 rows per request
+
     const rowCount = Math.min(limit, 100);
-    
+
     const listInfo = {
       row_count: String(rowCount),
       start_index: String(offset + 1),
@@ -28,14 +27,8 @@ class SDPUsersAPI {
       get_total_count: true
     };
 
-    // Add search using search_criteria if provided
-    // IMPORTANT: Cannot use both search_criteria and filter_by - causes 400 error
     if (searchTerm) {
-      listInfo.search_criteria = {
-        field: 'name',
-        condition: 'contains',
-        value: searchTerm
-      };
+      listInfo.search_fields = { name: searchTerm };
     }
 
     const params = {
@@ -43,27 +36,15 @@ class SDPUsersAPI {
     };
 
     try {
-      // Only try /users endpoint - /technicians doesn't exist in SDP Cloud
-      const response = await this.client.get('/users', { params });
-      
-      // Filter technicians from users list based on properties
-      // Look for users who have technician-specific properties
-      const allUsers = response.data.users || [];
-      const technicians = allUsers.filter(user => {
-        // Check various indicators that user is a technician
-        return user.is_technician === true || 
-               user.is_vip_user === true ||
-               user.employee_id || 
-               user.department?.name;
-      });
-      
+      const response = await this.client.get('/technicians', { params });
+      const technicians = response.data.technicians || [];
       return {
-        technicians: technicians,
-        total_count: technicians.length,
+        technicians,
+        total_count: response.data.list_info?.total_count || technicians.length,
         has_more: response.data.list_info?.has_more_rows || false
       };
     } catch (error) {
-      console.error('Failed to list users/technicians:', error.message);
+      console.error('Failed to list technicians:', error.message);
       throw error;
     }
   }
@@ -73,24 +54,22 @@ class SDPUsersAPI {
    */
   async getTechnician(technicianId) {
     try {
-      // Only use /users endpoint
-      const response = await this.client.get(`/users/${technicianId}`);
-      return response.data.user;
+      const response = await this.client.get(`/technicians/${technicianId}`);
+      return response.data.technician;
     } catch (error) {
-      console.error('Failed to get user/technician:', error.message);
+      console.error('Failed to get technician:', error.message);
       throw error;
     }
   }
 
   /**
-   * List users (requesters)
+   * List requesters
    */
   async listUsers(options = {}) {
     const { limit = 25, offset = 0, searchTerm, includeInactive = false } = options;
-    
-    // Enforce API maximum of 100 rows per request
+
     const rowCount = Math.min(limit, 100);
-    
+
     const listInfo = {
       row_count: String(rowCount),
       start_index: String(offset + 1),
@@ -99,68 +78,69 @@ class SDPUsersAPI {
       get_total_count: true
     };
 
-    // Add search using search_criteria if provided
-    // IMPORTANT: Cannot use both search_criteria and filter_by - causes 400 error
     if (searchTerm) {
-      listInfo.search_criteria = {
-        field: 'name',
-        condition: 'contains',
-        value: searchTerm
-      };
+      listInfo.search_fields = { name: searchTerm };
     }
 
     const params = {
       input_data: JSON.stringify({ list_info: listInfo })
     };
 
-    const response = await this.client.get('/users', { params });
-    
-    // Filter results after getting them if needed
-    let users = response.data.users || [];
+    const response = await this.client.get('/requesters', { params });
+
+    let users = response.data.requesters || [];
     if (!includeInactive) {
-      // Filter out inactive users client-side
       users = users.filter(user => user.is_active !== false);
     }
-    
+
     return {
-      users: users,
+      users,
       total_count: users.length,
       has_more: response.data.list_info?.has_more_rows || false
     };
   }
 
   /**
-   * Get user details
+   * Get requester details
    */
   async getUser(userId) {
-    const response = await this.client.get(`/users/${userId}`);
-    return response.data.user;
+    const response = await this.client.get(`/requesters/${userId}`);
+    return response.data.requester;
   }
 
   /**
    * Search for technician by name or email
    */
   async findTechnician(searchTerm) {
-    // First try exact email match
     try {
-      const result = await this.listTechnicians({ 
-        searchTerm, 
-        limit: 5 
-      });
-      
-      if (result.technicians.length > 0) {
-        // Return best match
-        const exactMatch = result.technicians.find(
+      const isEmail = searchTerm.includes('@');
+      const listInfo = {
+        row_count: '10',
+        start_index: '1',
+        get_total_count: true,
+        search_fields: isEmail
+          ? { email_id: searchTerm }
+          : { name: searchTerm }
+      };
+
+      const params = {
+        input_data: JSON.stringify({ list_info: listInfo })
+      };
+
+      const response = await this.client.get('/technicians', { params });
+      const technicians = response.data.technicians || [];
+
+      if (technicians.length > 0) {
+        const exactMatch = technicians.find(
           t => t.email_id?.toLowerCase() === searchTerm.toLowerCase() ||
                t.name?.toLowerCase() === searchTerm.toLowerCase()
         );
-        
-        return exactMatch || result.technicians[0];
+        return exactMatch || technicians[0];
       }
     } catch (error) {
       console.error('Failed to find technician:', error.message);
     }
-    
+
     return null;
   }
 

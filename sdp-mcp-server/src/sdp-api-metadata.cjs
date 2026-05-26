@@ -61,46 +61,42 @@ class SDPMetadataClient {
    */
   async getPriorities() {
     if (this.cache.priorities) return this.cache.priorities;
-    
+
+    const FALLBACK_PRIORITIES = [
+      { id: null, name: '1 - Low' },
+      { id: null, name: 'z - Medium' },
+      { id: null, name: '3 - High' },
+      { id: null, name: '4 - Critical' }
+    ];
+
     try {
       const params = {
         input_data: JSON.stringify({
-          list_info: {
-            row_count: 100,
-            start_index: 0
-          }
+          list_info: { row_count: '100', start_index: '1' }
         })
       };
-      
+
       const response = await this.client.get('/priorities', { params });
-      this.cache.priorities = response.data.priorities || [];
-      
-      // Create mapping for easy lookup
-      const priorityMap = {};
-      this.cache.priorities.forEach(p => {
-        priorityMap[p.name.toLowerCase()] = p.id;
-        priorityMap[p.id] = p.name;
-        // Add common aliases for priorities
-        if (p.name === '1 - Low') {
-          priorityMap['low'] = p.id;
-        } else if (p.name === '2 - Normal') {
-          priorityMap['normal'] = p.id;
-        } else if (p.name === '3 - High') {
-          priorityMap['high'] = p.id;
-        } else if (p.name === '4 - Critical') {
-          priorityMap['critical'] = p.id;
-          priorityMap['urgent'] = p.id;  // alias
-        } else if (p.name === 'z - Medium') {
-          priorityMap['medium'] = p.id;
-        }
-      });
-      this.cache.priorityMap = priorityMap;
-      
-      return this.cache.priorities;
+      const apiPriorities = response.data.priorities || [];
+      this.cache.priorities = apiPriorities.length > 0 ? apiPriorities : FALLBACK_PRIORITIES;
     } catch (error) {
-      console.error('Failed to fetch priorities:', error.message);
-      return [];
+      console.error('Failed to fetch priorities from API, using fallback list:', error.message);
+      this.cache.priorities = FALLBACK_PRIORITIES;
     }
+
+    const priorityMap = {};
+    this.cache.priorities.forEach(p => {
+      priorityMap[p.name.toLowerCase()] = p.id;
+      if (p.id) priorityMap[p.id] = p.name;
+      if (p.name === '1 - Low')           priorityMap['low']      = p.id;
+      else if (p.name === '2 - Normal')   priorityMap['normal']   = p.id;
+      else if (p.name === '3 - High')     priorityMap['high']     = p.id;
+      else if (p.name === '4 - Critical') { priorityMap['critical'] = p.id; priorityMap['urgent'] = p.id; }
+      else if (p.name === 'z - Medium')   priorityMap['medium']   = p.id;
+    });
+    this.cache.priorityMap = priorityMap;
+
+    return this.cache.priorities;
   }
   
   /**
@@ -121,7 +117,7 @@ class SDPMetadataClient {
     try {
       const params = {
         input_data: JSON.stringify({
-          list_info: { row_count: 100, start_index: 0 }
+          list_info: { row_count: '100', start_index: '1' }
         })
       };
       const response = await this.client.get('/statuses', { params });
@@ -151,13 +147,10 @@ class SDPMetadataClient {
     try {
       const params = {
         input_data: JSON.stringify({
-          list_info: {
-            row_count: 200,
-            start_index: 0
-          }
+          list_info: { row_count: '200', start_index: '1' }
         })
       };
-      
+
       const response = await this.client.get('/categories', { params });
       this.cache.categories = response.data.categories || [];
       
@@ -185,13 +178,10 @@ class SDPMetadataClient {
     try {
       const params = {
         input_data: JSON.stringify({
-          list_info: {
-            row_count: 100,
-            start_index: 0
-          }
+          list_info: { row_count: '100', start_index: '1' }
         })
       };
-      
+
       const response = await this.client.get('/request_templates', { params });
       this.cache.templates = response.data.request_templates || [];
       
@@ -261,13 +251,10 @@ class SDPMetadataClient {
     try {
       const params = {
         input_data: JSON.stringify({
-          list_info: {
-            row_count: 100,
-            start_index: 1
-          }
+          list_info: { row_count: '100', start_index: '1' }
         })
       };
-      
+
       const response = await this.client.get(`/categories/${categoryId}/subcategories`, { params });
       const subcategories = response.data.subcategories || [];
       
