@@ -7,6 +7,7 @@ const axios = require('axios');
 const { SDPOAuthClient } = require('./sdp-oauth-client.cjs');
 const { SDPMetadataClient } = require('./sdp-api-metadata.cjs');
 const { SDPUsersAPI } = require('./sdp-api-users.cjs');
+const { SDPAvailabilityAPI } = require('./sdp-api-availability.cjs');
 const errorLogger = require('./utils/error-logger.cjs');
 
 // Canonical priority name map for this SDP instance.
@@ -236,6 +237,7 @@ class SDPAPIClientV2 {
     
     // Initialize users API
     this.users = new SDPUsersAPI(this.client, this.metadata);
+    this.availability = new SDPAvailabilityAPI(this.client);
   }
   
   /**

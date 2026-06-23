@@ -12,6 +12,7 @@ const { listPrompts, getPrompt } = require('./mcp-prompts.cjs');
 const { makeImplementations: makeRequestImpls, schemas: requestSchemas } = require('./tools/requests.cjs');
 const { makeImplementations: makeTechImpls, schemas: techSchemas } = require('./tools/technicians.cjs');
 const { makeImplementations: makeMetaImpls, schemas: metaSchemas } = require('./tools/metadata.cjs');
+const { makeImplementations: makeAvailImpls, schemas: availSchemas } = require('./tools/availability.cjs');
 
 const app = express();
 app.use(cors());
@@ -42,10 +43,11 @@ try {
 const toolImplementations = sdpClient ? {
   ...makeRequestImpls(sdpClient),
   ...makeTechImpls(sdpClient),
-  ...makeMetaImpls(sdpClient)
+  ...makeMetaImpls(sdpClient),
+  ...makeAvailImpls(sdpClient)
 } : {};
 
-const tools = [...requestSchemas, ...techSchemas, ...metaSchemas];
+const tools = [...requestSchemas, ...techSchemas, ...metaSchemas, ...availSchemas];
 
 // Active SSE connections
 const connections = new Map();
