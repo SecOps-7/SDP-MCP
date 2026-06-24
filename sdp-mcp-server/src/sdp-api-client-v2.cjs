@@ -38,7 +38,9 @@ class SDPAPIClientV2 {
       ? `${process.env.SDP_BASE_URL || 'http://localhost:3457'}/api/v3`
       : this.customDomain
         ? `${this.customDomain}/api/v3`
-        : `https://sdpondemand.manageengine.com/api/v3`;
+        : (process.env.SDP_INSTANCE_NAME || process.env.SDP_PORTAL_NAME)
+          ? `https://sdpondemand.manageengine.com/app/${process.env.SDP_INSTANCE_NAME || process.env.SDP_PORTAL_NAME}/api/v3`
+          : `https://sdpondemand.manageengine.com/api/v3`;
     
     console.error(`SDP API baseURL: ${baseURL}`);
     if (useMock) {
@@ -119,7 +121,7 @@ class SDPAPIClientV2 {
           const errorData = error.response?.data;
           
           // If we get HTML back, it's a 404/missing endpoint, not auth issue
-          if (typeof errorData === 'string' && errorData.includes('<html>')) {
+          if (typeof errorData === 'string' && errorData.includes('<html')) {
             console.error('Got 401 with HTML response - endpoint does not exist, skipping token refresh');
             return Promise.reject(error);
           }
@@ -185,7 +187,7 @@ class SDPAPIClientV2 {
         // Handle 400 errors with HTML (non-existent endpoints)
         if (error.response?.status === 400) {
           const errorData = error.response?.data;
-          if (typeof errorData === 'string' && errorData.includes('<html>')) {
+          if (typeof errorData === 'string' && errorData.includes('<html')) {
             console.error('Got 400 with HTML response - endpoint does not exist');
             error.message = 'API endpoint does not exist';
           }
