@@ -36,11 +36,13 @@ class SDPAPIClientV2 {
     const useMock = process.env.SDP_USE_MOCK === 'true' || process.env.SDP_USE_MOCK_API === 'true';
     const baseURL = useMock
       ? `${process.env.SDP_BASE_URL || 'http://localhost:3457'}/api/v3`
-      : this.customDomain
-        ? `${this.customDomain}/api/v3`
-        : (process.env.SDP_INSTANCE_NAME || process.env.SDP_PORTAL_NAME)
-          ? `https://sdpondemand.manageengine.com/app/${process.env.SDP_INSTANCE_NAME || process.env.SDP_PORTAL_NAME}/api/v3`
-          : `https://sdpondemand.manageengine.com/api/v3`;
+      : (() => {
+          const domain = this.customDomain || 'https://sdpondemand.manageengine.com';
+          const portal = process.env.SDP_INSTANCE_NAME || process.env.SDP_PORTAL_NAME;
+          // If domain already contains /app/ the portal path is embedded — don't add it again
+          if (domain.includes('/app/')) return `${domain}/api/v3`;
+          return portal ? `${domain}/app/${portal}/api/v3` : `${domain}/api/v3`;
+        })();
     
     console.error(`SDP API baseURL: ${baseURL}`);
     if (useMock) {
