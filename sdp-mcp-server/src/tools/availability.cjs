@@ -4,9 +4,8 @@ function makeImplementations(sdpClient) {
   return {
 
     async list_technician_unavailability(params) {
-      const { limit = 25, technician_id } = params;
+      const { technician_id } = params;
       const result = await sdpClient.availability.listUnavailability({
-        limit,
         technicianId: technician_id
       });
       return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
@@ -25,12 +24,11 @@ function makeImplementations(sdpClient) {
 const schemas = [
   {
     name: 'list_technician_unavailability',
-    description: 'List technician unavailability/leave periods. Use to check if a technician is on leave before assigning a request.',
+    description: 'Returns technicians currently on leave right now. Use this before assigning a request to verify the technician is available today. Returns an empty list if no technicians are currently unavailable.',
     inputSchema: {
       type: 'object',
       properties: {
-        limit: { type: 'number', description: 'Maximum number of records to return (max 100)', default: 25, maximum: 100 },
-        technician_id: { type: 'string', description: 'Filter by technician ID to check a specific person\'s availability' }
+        technician_id: { type: 'string', description: 'Optionally scope to a single technician ID to check whether that specific person is currently unavailable' }
       }
     }
   },
