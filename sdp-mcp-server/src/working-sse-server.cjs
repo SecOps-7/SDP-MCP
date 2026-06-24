@@ -20,11 +20,12 @@ app.use(express.json());
 
 // Diagnostic: log env vars at startup so misconfiguration is immediately visible
 console.error('SDP env check:');
-console.error(`  SDP_BASE_URL     = ${process.env.SDP_BASE_URL     || '(not set)'}`);
-console.error(`  SDP_PORTAL_NAME  = ${process.env.SDP_PORTAL_NAME  || '(not set)'}`);
-console.error(`  SDP_CLIENT_ID    = ${process.env.SDP_CLIENT_ID    ? '(set)' : '(not set)'}`);
-console.error(`  SDP_REFRESH_TOKEN= ${process.env.SDP_REFRESH_TOKEN? '(set)' : '(not set)'}`);
-console.error(`  SDP_DATA_CENTER  = ${process.env.SDP_DATA_CENTER  || 'US (default)'}`);
+console.error(`  SDP_BASE_URL      = ${process.env.SDP_BASE_URL      || '(not set)'}`);
+console.error(`  SDP_INSTANCE_NAME = ${process.env.SDP_INSTANCE_NAME || '(not set)'}`);
+console.error(`  SDP_PORTAL_NAME   = ${process.env.SDP_PORTAL_NAME   || '(not set)'}`);
+console.error(`  SDP_CLIENT_ID     = ${process.env.SDP_CLIENT_ID     ? '(set)' : '(not set)'}`);
+console.error(`  SDP_REFRESH_TOKEN = ${process.env.SDP_REFRESH_TOKEN ? '(set)' : '(not set)'}`);
+console.error(`  SDP_DATA_CENTER   = ${process.env.SDP_DATA_CENTER   || 'US (default)'}`);
 
 let sdpClient;
 try {
